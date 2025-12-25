@@ -576,21 +576,19 @@ export default function Chat() {
         </div>
 
         {/* Unread Messages Section */}
-        {unreadConversations.length > 0 && (
+        {unreadConversations.filter(({ user }) => user.id !== selectedUser?.id).length > 0 && (
           <>
             <div className="px-4 py-2 bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800">
               <h3 className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-wider">
-                Unread Messages ({unreadConversations.length})
+                Unread Messages ({unreadConversations.filter(({ user }) => user.id !== selectedUser?.id).length})
               </h3>
             </div>
             <div className="border-b-2 border-green-500">
-              {unreadConversations.map(({ user, count }) => (
+              {unreadConversations.filter(({ user }) => user.id !== selectedUser?.id).map(({ user, count }) => (
                 <button
                   key={user.id}
                   onClick={() => setSelectedUser(user)}
-                  className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition relative bg-green-50/50 dark:bg-green-900/10 ${
-                    selectedUser?.id === user.id ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-600' : ''
-                  }`}
+                  className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition relative bg-green-50/50 dark:bg-green-900/10"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 relative">
                     <span className="text-white font-semibold text-lg">
