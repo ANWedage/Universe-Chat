@@ -8,7 +8,7 @@ import Image from 'next/image'
 import { AlertCircle, Home } from 'lucide-react'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,12 +37,30 @@ export default function Login() {
     setLoading(true)
 
     try {
+      // Look up the user's email from their username
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', username)
+        .single()
+
+      if (profileError || !profile) {
+        setError('Invalid username or password')
+        setLoading(false)
+        return
+      }
+
+      // Sign in with the email and password
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: profile.email,
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        setError('Invalid username or password')
+        setLoading(false)
+        return
+      }
 
       router.push('/chat')
       router.refresh()
@@ -96,17 +114,17 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Email
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Username
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
               required
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
-              placeholder="you@example.com"
+              placeholder="johndoe"
             />
           </div>
 
