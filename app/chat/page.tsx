@@ -1428,6 +1428,23 @@ export default function Chat() {
                 const isDeletable = canDeleteMessage(message)
                 const isTopHalf = index < messages.length / 2
                 const isSelected = selectedMessages.has(message.id)
+                
+                let touchTimer: NodeJS.Timeout | null = null
+                
+                const handleTouchStart = () => {
+                  if (!isDeletable || multiSelectMode) return
+                  touchTimer = setTimeout(() => {
+                    setMessageMenuOpen(message.id)
+                    setShowDeleteSubmenu(false)
+                  }, 1000)
+                }
+                
+                const handleTouchEnd = () => {
+                  if (touchTimer) {
+                    clearTimeout(touchTimer)
+                  }
+                }
+                
                 return (
                   <div
                     key={message.id}
@@ -1447,6 +1464,9 @@ export default function Chat() {
                         </button>
                       )}
                       <div
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchEnd}
                         className={`inline-block max-w-[85%] sm:max-w-[75%] md:max-w-[65%] rounded-md px-2.5 py-1.5 ${
                           isSent
                             ? 'bg-gradient-to-r from-green-700 to-emerald-700 text-white'
@@ -1494,7 +1514,9 @@ export default function Chat() {
                               setMessageMenuOpen(messageMenuOpen === message.id ? null : message.id)
                               setShowDeleteSubmenu(false)
                             }}
-                            className={`p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${
+                            className={`p-1 rounded-lg transition-opacity md:opacity-0 md:group-hover:opacity-100 ${
+                              messageMenuOpen === message.id ? 'opacity-100' : 'opacity-0 md:opacity-0'
+                            } ${
                               isSent 
                                 ? 'hover:bg-white/20 text-white' 
                                 : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
@@ -1504,7 +1526,12 @@ export default function Chat() {
                             <MoreVertical className="w-4 h-4" />
                           </button>
                           {messageMenuOpen === message.id && (
-                            <div className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[140px] z-10`}>
+                            <div 
+                              className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} ${
+                                isSent ? 'right-0' : 'left-0'
+                              } bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px] z-20`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <button
                                 onClick={() => setShowDeleteSubmenu(!showDeleteSubmenu)}
                                 className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
@@ -1515,17 +1542,22 @@ export default function Chat() {
                             </div>
                           )}
                           {showDeleteSubmenu && messageMenuOpen === message.id && (
-                            <div className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} right-[152px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] z-10`}>
+                            <div 
+                              className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} ${
+                                isSent ? 'right-0 md:right-[152px]' : 'left-0 md:left-[152px]'
+                              } bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 w-[200px] md:min-w-[180px] z-30`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <button
                                 onClick={() => deleteMessageForEveryone(message.id)}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                                className="w-full px-4 py-3 md:py-2 text-left text-sm md:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 text-red-600 dark:text-red-400 flex items-center space-x-2"
                               >
                                 <Trash2 className="w-4 h-4" />
                                 <span>Delete for everyone</span>
                               </button>
                               <button
                                 onClick={() => deleteMessageForMe(message.id)}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                                className="w-full px-4 py-3 md:py-2 text-left text-sm md:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
                               >
                                 <Trash2 className="w-4 h-4" />
                                 <span>Delete for me</span>
