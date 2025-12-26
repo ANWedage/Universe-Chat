@@ -1245,7 +1245,7 @@ export default function Chat() {
                         </button>
                       )}
                       <div
-                        className={`inline-block max-w-[75%] rounded-md px-2.5 py-1 ${
+                        className={`inline-block max-w-[100%] rounded-md px-2.5 py-1 ${
                           isSent
                             ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
                             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
