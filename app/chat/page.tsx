@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings } from 'lucide-react'
+import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
 
@@ -22,6 +22,8 @@ type Message = {
   content: string
   created_at: string
   read: boolean
+  deleted_by_sender: boolean
+  deleted_by_receiver: boolean
 }
 
 export default function Chat() {
@@ -41,6 +43,12 @@ export default function Chat() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmUsername, setDeleteConfirmUsername] = useState('')
   const [deleteError, setDeleteError] = useState('')
+  const [messageMenuOpen, setMessageMenuOpen] = useState<string | null>(null)
+  const [showDeleteSubmenu, setShowDeleteSubmenu] = useState(false)
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set())
+  const [showMultiSelectMenu, setShowMultiSelectMenu] = useState(false)
+  const [showMultiSelectDeleteSubmenu, setShowMultiSelectDeleteSubmenu] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -312,7 +320,14 @@ export default function Chat() {
         .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${currentUser.id})`)
         .order('created_at', { ascending: true })
 
-      setMessages(data || [])
+      // Filter out messages deleted by current user
+      const filteredMessages = (data || []).filter((msg: Message) => {
+        if (msg.sender_id === currentUser.id && msg.deleted_by_sender) return false
+        if (msg.receiver_id === currentUser.id && msg.deleted_by_receiver) return false
+        return true
+      })
+
+      setMessages(filteredMessages)
 
       // Mark messages as read
       await supabase
@@ -382,6 +397,119 @@ export default function Chat() {
     await loadUnreadConversations()
     // Then close the chat
     setSelectedUser(null)
+    setMessageMenuOpen(null)
+    setShowDeleteSubmenu(false)
+    setMultiSelectMode(false)
+    setSelectedMessages(new Set())
+    setShowMultiSelectMenu(false)
+    setShowMultiSelectDeleteSubmenu(false)
+  }
+
+  const deleteMessageForEveryone = async (messageId: string) => {
+    try {
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId)
+      
+      // Remove from local state
+      setMessages((current) => current.filter(msg => msg.id !== messageId))
+      setMessageMenuOpen(null)
+      setShowDeleteSubmenu(false)
+    } catch (error) {
+      console.error('Error deleting message for everyone:', error)
+    }
+  }
+
+  const deleteMessageForMe = async (messageId: string) => {
+    if (!currentUser) return
+
+    try {
+      const message = messages.find(msg => msg.id === messageId)
+      if (!message) return
+
+      const isSender = message.sender_id === currentUser.id
+      
+      await supabase
+        .from('messages')
+        .update({ 
+          [isSender ? 'deleted_by_sender' : 'deleted_by_receiver']: true 
+        })
+        .eq('id', messageId)
+      
+      // Remove from local state
+      setMessages((current) => current.filter(msg => msg.id !== messageId))
+      setMessageMenuOpen(null)
+      setShowDeleteSubmenu(false)
+    } catch (error) {
+      console.error('Error deleting message for me:', error)
+    }
+  }
+
+  const canDeleteMessage = (message: Message) => {
+    if (!currentUser || message.sender_id !== currentUser.id) return false
+    const messageTime = new Date(message.created_at).getTime()
+    const now = new Date().getTime()
+    const fiveMinutes = 5 * 60 * 1000
+    return (now - messageTime) <= fiveMinutes
+  }
+
+  const toggleMultiSelect = () => {
+    setMultiSelectMode(!multiSelectMode)
+    setSelectedMessages(new Set())
+    setMessageMenuOpen(null)
+    setShowDeleteSubmenu(false)
+    setShowMultiSelectMenu(false)
+    setShowMultiSelectDeleteSubmenu(false)
+  }
+
+  const toggleMessageSelection = (messageId: string) => {
+    const newSelected = new Set(selectedMessages)
+    if (newSelected.has(messageId)) {
+      newSelected.delete(messageId)
+    } else {
+      newSelected.add(messageId)
+    }
+    setSelectedMessages(newSelected)
+  }
+
+  const deleteSelectedMessages = async (deleteForEveryone: boolean) => {
+    if (!currentUser || selectedMessages.size === 0) return
+
+    try {
+      const messageIds = Array.from(selectedMessages)
+      
+      if (deleteForEveryone) {
+        // Delete messages completely from database
+        await supabase
+          .from('messages')
+          .delete()
+          .in('id', messageIds)
+      } else {
+        // Mark as deleted for current user
+        for (const msgId of messageIds) {
+          const message = messages.find(msg => msg.id === msgId)
+          if (!message) continue
+          
+          const isSender = message.sender_id === currentUser.id
+          await supabase
+            .from('messages')
+            .update({ 
+              [isSender ? 'deleted_by_sender' : 'deleted_by_receiver']: true 
+            })
+            .eq('id', msgId)
+        }
+      }
+      
+      // Remove from local state
+      setMessages((current) => current.filter(msg => !selectedMessages.has(msg.id)))
+      setSelectedMessages(new Set())
+      setMultiSelectMode(false)
+      setShowMultiSelectMenu(false)
+      setShowMultiSelectDeleteSubmenu(false)
+    } catch (error) {
+      console.error('Error deleting selected messages:', error)
+    }
   }
 
   const handleLogout = async () => {
@@ -709,6 +837,19 @@ export default function Chat() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  {messages.length > 0 && (
+                    <button
+                      onClick={toggleMultiSelect}
+                      className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                        multiSelectMode ? 'bg-green-100 dark:bg-green-900/30' : ''
+                      }`}
+                      title="Select multiple messages"
+                    >
+                      <CheckSquare className={`w-5 h-5 ${
+                        multiSelectMode ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+                      }`} />
+                    </button>
+                  )}
                   <button
                     onClick={loadMessages}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -727,34 +868,150 @@ export default function Chat() {
               </div>
             </div>
 
+            {/* Multi-select Toolbar */}
+            {multiSelectMode && selectedMessages.size > 0 && (
+              <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                    {selectedMessages.size} message{selectedMessages.size !== 1 ? 's' : ''} selected
+                  </span>
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setShowMultiSelectMenu(!showMultiSelectMenu)
+                        setShowMultiSelectDeleteSubmenu(false)
+                      }}
+                      className="p-2 hover:bg-green-100 dark:hover:bg-green-900/40 rounded-lg transition-colors"
+                      title="Delete options"
+                    >
+                      <MoreVertical className="w-5 h-5 text-green-700 dark:text-green-400" />
+                    </button>
+                    {showMultiSelectMenu && (
+                      <div className="absolute top-full mt-2 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[140px] z-10">
+                        <button
+                          onClick={() => setShowMultiSelectDeleteSubmenu(!showMultiSelectDeleteSubmenu)}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    )}
+                    {showMultiSelectDeleteSubmenu && showMultiSelectMenu && (
+                      <div className="absolute top-full mt-2 right-[152px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] z-10">
+                        <button
+                          onClick={() => deleteSelectedMessages(true)}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete for everyone</span>
+                        </button>
+                        <button
+                          onClick={() => deleteSelectedMessages(false)}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete for me</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message) => {
+              {messages.map((message, index) => {
                 const isSent = message.sender_id === currentUser?.id
+                const isDeletable = canDeleteMessage(message)
+                const isTopHalf = index < messages.length / 2
+                const isSelected = selectedMessages.has(message.id)
                 return (
                   <div
                     key={message.id}
-                    className={`flex ${isSent ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${isSent ? 'justify-end' : 'justify-start'} group`}
                   >
-                    <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                        isSent
-                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
-                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
-                      }`}
-                    >
-                      <p className="text-sm break-words">
-                        {decryptedMessages.get(message.id) || 'Decrypting...'}
-                      </p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
+                    <div className={`flex items-end space-x-2 ${isSent ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                      {multiSelectMode && (
+                        <button
+                          onClick={() => toggleMessageSelection(message.id)}
+                          className="mb-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                          )}
+                        </button>
+                      )}
+                      <div
+                        className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                          isSent
+                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
+                            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
                         }`}
                       >
-                        {formatDistanceToNow(new Date(message.created_at), {
-                          addSuffix: true,
-                        })}
-                      </p>
+                        <p className="text-sm break-words">
+                          {decryptedMessages.get(message.id) || 'Decrypting...'}
+                        </p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
+                          }`}
+                        >
+                          {formatDistanceToNow(new Date(message.created_at), {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      </div>
+                      {isDeletable && !multiSelectMode && (
+                        <div className="relative">
+                          <button
+                            onClick={() => {
+                              setMessageMenuOpen(messageMenuOpen === message.id ? null : message.id)
+                              setShowDeleteSubmenu(false)
+                            }}
+                            className={`p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${
+                              isSent 
+                                ? 'hover:bg-white/20 text-white' 
+                                : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+                            }`}
+                            title="Message options"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          {messageMenuOpen === message.id && (
+                            <div className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[140px] z-10`}>
+                              <button
+                                onClick={() => setShowDeleteSubmenu(!showDeleteSubmenu)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
+                          {showDeleteSubmenu && messageMenuOpen === message.id && (
+                            <div className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} right-[152px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] z-10`}>
+                              <button
+                                onClick={() => deleteMessageForEveryone(message.id)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span>Delete for everyone</span>
+                              </button>
+                              <button
+                                onClick={() => deleteMessageForMe(message.id)}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span>Delete for me</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )

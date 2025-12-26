@@ -46,6 +46,8 @@ export interface Database {
           content: string
           created_at: string
           read: boolean
+          deleted_by_sender: boolean
+          deleted_by_receiver: boolean
         }
         Insert: {
           id?: string
@@ -54,6 +56,8 @@ export interface Database {
           content: string
           created_at?: string
           read?: boolean
+          deleted_by_sender?: boolean
+          deleted_by_receiver?: boolean
         }
         Update: {
           id?: string
@@ -62,6 +66,8 @@ export interface Database {
           content?: string
           created_at?: string
           read?: boolean
+          deleted_by_sender?: boolean
+          deleted_by_receiver?: boolean
         }
       }
     }
