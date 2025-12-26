@@ -1561,9 +1561,9 @@ export default function Chat() {
                           )}
                           {showDeleteSubmenu && messageMenuOpen === message.id && (
                             <div 
-                              className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} ${
-                                isSent ? 'right-0 md:right-[152px]' : 'left-0 md:left-[152px]'
-                              } bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 w-[200px] md:min-w-[180px] z-30`}
+                              className={`fixed md:absolute ${isTopHalf ? 'md:top-full md:mt-2' : 'md:bottom-full md:mb-2'} ${
+                                isSent ? 'left-4 right-4 md:left-auto md:right-0 md:right-[152px]' : 'left-4 right-4 md:right-auto md:left-0 md:left-[152px]'
+                              } bottom-20 md:bottom-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 md:w-[200px] md:min-w-[180px] z-30`}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
