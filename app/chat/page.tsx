@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile } from 'lucide-react'
+import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile, Menu } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
 
@@ -79,6 +79,7 @@ export default function Chat() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -1012,13 +1013,25 @@ export default function Chat() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Overlay */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+        
         {/* Sidebar */}
-        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+        <div className={`
+          w-full sm:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
+          fixed md:relative inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-green-600 to-emerald-600">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
+        <div className="p-3 md:p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-green-600 to-emerald-600">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <div className="flex items-center space-x-2 md:space-x-3">
               <Image
                 src="/logo.png"
                 alt="Universe Chat Logo"
@@ -1026,12 +1039,13 @@ export default function Chat() {
                 height={40}
                 priority
                 unoptimized
+                className="w-8 h-8 md:w-10 md:h-10"
               />
-              <h1 className="text-xl font-bold text-white">Universe Chat</h1>
+              <h1 className="text-lg md:text-xl font-bold text-white">Universe Chat</h1>
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 hover:bg-white/20 rounded-lg transition text-white"
+              className="p-2 hover:bg-white/20 active:bg-white/30 rounded-lg transition text-white"
               title="Logout"
             >
               <LogOut className="w-5 h-5" />
@@ -1182,7 +1196,10 @@ export default function Chat() {
             filteredUsers.map((user) => (
               <div key={user.id} className="relative">
                 <button
-                  onClick={() => setSelectedUser(user)}
+                  onClick={() => {
+                    setSelectedUser(user)
+                    setIsSidebarOpen(false)
+                  }}
                   onContextMenu={(e) => handleRightClick(e, user.id)}
                   className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
                     selectedUser?.id === user.id ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-600' : ''
@@ -1262,13 +1279,21 @@ export default function Chat() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 w-full md:w-auto">
         {selectedUser ? (
           <>
             {/* Chat Header */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+                {/* Mobile Menu Button */}
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition mr-2 flex-shrink-0"
+                >
+                  <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                </button>
+                
+                <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
                   <div 
                     className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition"
                     onClick={() => selectedUser.avatar_url && setViewingAvatar({ url: selectedUser.avatar_url, name: selectedUser.full_name })}
@@ -1312,7 +1337,7 @@ export default function Chat() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
                   {messages.length > 0 && (
                     <button
                       onClick={toggleMultiSelect}
@@ -1321,7 +1346,7 @@ export default function Chat() {
                       }`}
                       title="Select multiple messages"
                     >
-                      <CheckSquare className={`w-5 h-5 ${
+                      <CheckSquare className={`w-4 h-4 md:w-5 md:h-5 ${
                         multiSelectMode ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
                       }`} />
                     </button>
@@ -1331,14 +1356,14 @@ export default function Chat() {
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     title="Refresh messages"
                   >
-                    <RefreshCw className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    <RefreshCw className="w-4 h-4 md:w-5 md:h-5 text-gray-500 dark:text-gray-400" />
                   </button>
                   <button
                     onClick={handleCloseChat}
                     className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     title="Close chat"
                   >
-                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    <X className="w-4 h-4 md:w-5 md:h-5 text-gray-500 dark:text-gray-400" />
                   </button>
                 </div>
               </div>
@@ -1422,7 +1447,7 @@ export default function Chat() {
                         </button>
                       )}
                       <div
-                        className={`inline-block max-w-[65%] rounded-md px-2.5 py-1.5 ${
+                        className={`inline-block max-w-[85%] sm:max-w-[75%] md:max-w-[65%] rounded-md px-2.5 py-1.5 ${
                           isSent
                             ? 'bg-gradient-to-r from-green-700 to-emerald-700 text-white'
                             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
@@ -1517,17 +1542,17 @@ export default function Chat() {
             </div>
 
             {/* Message Input */}
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-              <form onSubmit={sendMessage} className="flex space-x-2 relative">
+            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 md:p-4">
+              <form onSubmit={sendMessage} className="flex space-x-1 md:space-x-2 relative">
                 <div className="flex items-center">
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="px-3 py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                    className="px-2 md:px-3 py-2 md:py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors active:bg-gray-100 dark:active:bg-gray-700 rounded-lg"
                   >
-                    <Smile className="w-6 h-6" />
+                    <Smile className="w-5 h-5 md:w-6 md:h-6" />
                   </button>
-                  <label className="px-3 py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
+                  <label className="px-2 md:px-3 py-2 md:py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer active:bg-gray-100 dark:active:bg-gray-700 rounded-lg">
                     <input
                       type="file"
                       accept="image/*"
@@ -1535,11 +1560,11 @@ export default function Chat() {
                       className="hidden"
                       disabled={uploadingImage}
                     />
-                    <Upload className={`w-6 h-6 ${uploadingImage ? 'opacity-50' : ''}`} />
+                    <Upload className={`w-5 h-5 md:w-6 md:h-6 ${uploadingImage ? 'opacity-50' : ''}`} />
                   </label>
                   {showEmojiPicker && (
-                    <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-80 max-h-64 overflow-y-auto scrollbar-hide z-50">
-                      <div className="grid grid-cols-8 gap-2">
+                    <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 max-w-[280px] sm:max-w-none sm:w-80 max-h-48 sm:max-h-64 overflow-y-auto scrollbar-hide z-50">
+                      <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 sm:gap-2">
                         {emojis.map((emoji, index) => (
                           <button
                             key={index}
@@ -1562,12 +1587,12 @@ export default function Chat() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
+                  className="flex-1 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
                 />
                 <button
                   type="submit"
                   disabled={!newMessage.trim()}
-                  className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
+                  className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 md:hover:scale-105"
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -1575,15 +1600,23 @@ export default function Chat() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            {/* Mobile Menu Button for empty state */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden mb-6 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg flex items-center space-x-2 shadow-lg hover:from-green-700 hover:to-emerald-700 transition active:scale-95"
+            >
+              <Menu className="w-5 h-5" />
+              <span>Open Chats</span>
+            </button>
             <div className="text-center">
-              <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 rounded-full inline-block mb-4">
-                <MessageSquare className="w-16 h-16 text-white" />
+              <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 md:p-6 rounded-full inline-block mb-4">
+                <MessageSquare className="w-12 h-12 md:w-16 md:h-16 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Welcome to Universe Chat
               </h2>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">
                 Select a user to start chatting
               </p>
             </div>
@@ -1594,13 +1627,13 @@ export default function Chat() {
     
     {/* Settings Modal */}
     {showSettings && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowSettings(false)}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] md:max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
             <button
               onClick={() => setShowSettings(false)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition active:bg-gray-200 dark:active:bg-gray-600"
             >
               <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
@@ -1855,18 +1888,18 @@ export default function Chat() {
         className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
         onClick={() => setViewingAvatar(null)}
       >
-        <div className="relative">
+        <div className="relative w-full max-w-md">
           <button
             onClick={() => setViewingAvatar(null)}
-            className="absolute -top-10 right-0 p-2 text-white hover:bg-white/10 rounded-lg transition"
+            className="absolute -top-12 md:-top-10 right-0 p-2 text-white hover:bg-white/10 rounded-lg transition active:bg-white/20"
           >
             <X className="w-6 h-6" />
           </button>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 shadow-2xl">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center truncate">
               {viewingAvatar.name}
             </h3>
-            <div className="w-80 h-80 rounded-full overflow-hidden border-4 border-green-500 dark:border-green-400">
+            <div className="w-64 h-64 sm:w-80 sm:h-80 mx-auto rounded-full overflow-hidden border-4 border-green-500 dark:border-green-400">
               <Image
                 src={viewingAvatar.url}
                 alt={viewingAvatar.name}
