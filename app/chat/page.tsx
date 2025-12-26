@@ -1011,7 +1011,7 @@ export default function Chat() {
         </div>
 
         {/* Users List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           {filteredUsers.length === 0 ? (
             <div className="p-4 text-center text-gray-500 dark:text-gray-400">
               No users found
@@ -1220,7 +1220,7 @@ export default function Chat() {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
               {messages.map((message, index) => {
                 const isSent = message.sender_id === currentUser?.id
                 const isDeletable = canDeleteMessage(message)
