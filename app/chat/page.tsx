@@ -51,11 +51,18 @@ export default function Chat() {
   const [showMultiSelectDeleteSubmenu, setShowMultiSelectDeleteSubmenu] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'myChats'>('all')
   const [myChatsUsers, setMyChatsUsers] = useState<Profile[]>([])
+  const [contextMenuUser, setContextMenuUser] = useState<string | null>(null)
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
     loadUser()
+    
+    // Add click handler to close context menu
+    const handleClick = () => setContextMenuUser(null)
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
   }, [])
 
   useEffect(() => {
@@ -504,6 +511,42 @@ export default function Chat() {
     return (now - messageTime) <= fiveMinutes
   }
 
+  const handleDeleteChat = async (userId: string) => {
+    if (!currentUser) return
+
+    try {
+      // Delete all messages in this conversation
+      await supabase
+        .from('messages')
+        .delete()
+        .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${currentUser.id})`)
+
+      // Remove from My Chats list
+      setMyChatsUsers((current) => current.filter(u => u.id !== userId))
+      
+      // Close chat if it's currently open
+      if (selectedUser?.id === userId) {
+        setSelectedUser(null)
+      }
+      
+      setContextMenuUser(null)
+    } catch (error) {
+      console.error('Error deleting chat:', error)
+    }
+  }
+
+  const handleRightClick = (e: React.MouseEvent, userId: string) => {
+    if (activeTab !== 'myChats') return
+    
+    e.preventDefault()
+    setContextMenuUser(userId)
+    setContextMenuPosition({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleCloseContextMenu = () => {
+    setContextMenuUser(null)
+  }
+
   const toggleMultiSelect = () => {
     setMultiSelectMode(!multiSelectMode)
     setSelectedMessages(new Set())
@@ -851,30 +894,54 @@ export default function Chat() {
             </div>
           ) : (
             filteredUsers.map((user) => (
-              <button
-                key={user.id}
-                onClick={() => setSelectedUser(user)}
-                className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
-                  selectedUser?.id === user.id ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-600' : ''
-                }`}
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-semibold text-lg">
-                    {user.full_name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                    {user.full_name}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    @{user.username}
-                  </p>
-                </div>
-              </button>
+              <div key={user.id} className="relative">
+                <button
+                  onClick={() => setSelectedUser(user)}
+                  onContextMenu={(e) => handleRightClick(e, user.id)}
+                  className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
+                    selectedUser?.id === user.id ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-600' : ''
+                  }`}
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-semibold text-lg">
+                      {user.full_name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {user.full_name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      @{user.username}
+                    </p>
+                  </div>
+                </button>
+              </div>
             ))
           )}
         </div>
+
+        {/* Context Menu for My Chats */}
+        {contextMenuUser && activeTab === 'myChats' && (
+          <div
+            style={{
+              position: 'fixed',
+              top: `${contextMenuPosition.y}px`,
+              left: `${contextMenuPosition.x}px`,
+              zIndex: 1000,
+            }}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => handleDeleteChat(contextMenuUser)}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Chat</span>
+            </button>
+          </div>
+        )}
 
         {/* Settings Button */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
