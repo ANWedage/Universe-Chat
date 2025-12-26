@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square } from 'lucide-react'
+import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
 
@@ -53,6 +53,8 @@ export default function Chat() {
   const [myChatsUsers, setMyChatsUsers] = useState<Profile[]>([])
   const [contextMenuUser, setContextMenuUser] = useState<string | null>(null)
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [viewingAvatar, setViewingAvatar] = useState<{ url: string; name: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -646,6 +648,63 @@ export default function Chat() {
     }
   }
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !currentUser) return
+
+    const file = e.target.files[0]
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB')
+      return
+    }
+
+    setUploadingAvatar(true)
+
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', currentUser.id)
+
+      if (updateError) throw updateError
+
+      // Update local state
+      setCurrentUser({ ...currentUser, avatar_url: publicUrl })
+      
+      // Reload users to update avatar in list
+      await loadUsers()
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      alert('Failed to upload avatar. Please try again.')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   const handleDeleteAccount = async () => {
     if (!currentUser) return
 
@@ -785,8 +844,22 @@ export default function Chat() {
           
           <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
+              <div 
+                className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition"
+                onClick={() => currentUser?.avatar_url && setViewingAvatar({ url: currentUser.avatar_url, name: currentUser.full_name })}
+              >
+                {currentUser?.avatar_url ? (
+                  <Image
+                    src={currentUser.avatar_url}
+                    alt={currentUser.full_name}
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <User className="w-6 h-6 text-white" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
@@ -815,10 +888,27 @@ export default function Chat() {
                   onClick={() => setSelectedUser(user)}
                   className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition relative bg-green-50/50 dark:bg-green-900/10"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 relative">
-                    <span className="text-white font-semibold text-lg">
-                      {user.full_name.charAt(0).toUpperCase()}
-                    </span>
+                  <div 
+                    className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 relative overflow-hidden cursor-pointer hover:opacity-80 transition"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      user.avatar_url && setViewingAvatar({ url: user.avatar_url, name: user.full_name })
+                    }}
+                  >
+                    {user.avatar_url ? (
+                      <Image
+                        src={user.avatar_url}
+                        alt={user.full_name}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-white font-semibold text-lg">
+                        {user.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                     <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
                       {count}
                     </div>
@@ -902,10 +992,27 @@ export default function Chat() {
                     selectedUser?.id === user.id ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-600' : ''
                   }`}
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-semibold text-lg">
-                      {user.full_name.charAt(0).toUpperCase()}
-                    </span>
+                  <div 
+                    className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      user.avatar_url && setViewingAvatar({ url: user.avatar_url, name: user.full_name })
+                    }}
+                  >
+                    {user.avatar_url ? (
+                      <Image
+                        src={user.avatar_url}
+                        alt={user.full_name}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-white font-semibold text-lg">
+                        {user.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
@@ -966,10 +1073,24 @@ export default function Chat() {
             <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold">
-                      {selectedUser.full_name.charAt(0).toUpperCase()}
-                    </span>
+                  <div 
+                    className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition"
+                    onClick={() => selectedUser.avatar_url && setViewingAvatar({ url: selectedUser.avatar_url, name: selectedUser.full_name })}
+                  >
+                    {selectedUser.avatar_url ? (
+                      <Image
+                        src={selectedUser.avatar_url}
+                        alt={selectedUser.full_name}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-white font-semibold">
+                        {selectedUser.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <h2 className="font-semibold text-gray-900 dark:text-white">
@@ -1215,6 +1336,55 @@ export default function Chat() {
           </div>
 
           <div className="space-y-4">
+            {/* Profile Picture Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Profile Picture
+              </label>
+              <div className="flex items-center space-x-4">
+                <div 
+                  className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition"
+                  onClick={() => currentUser?.avatar_url && setViewingAvatar({ url: currentUser.avatar_url, name: currentUser.full_name })}
+                >
+                  {currentUser?.avatar_url ? (
+                    <Image
+                      src={currentUser.avatar_url}
+                      alt={currentUser.full_name}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-2xl">
+                      {currentUser?.full_name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    id="avatar-upload"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="avatar-upload"
+                    className={`inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg cursor-pointer transition ${
+                      uploadingAvatar ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploadingAvatar ? 'Uploading...' : 'Upload Picture'}
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Max 5MB. JPG, PNG, or GIF
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Full Name
@@ -1377,6 +1547,38 @@ export default function Chat() {
         Developed by Adeepa Wedage
       </p>
     </footer>
+
+    {/* Avatar Viewer Modal */}
+    {viewingAvatar && (
+      <div 
+        className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+        onClick={() => setViewingAvatar(null)}
+      >
+        <div className="relative">
+          <button
+            onClick={() => setViewingAvatar(null)}
+            className="absolute -top-10 right-0 p-2 text-white hover:bg-white/10 rounded-lg transition"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+              {viewingAvatar.name}
+            </h3>
+            <div className="w-80 h-80 rounded-full overflow-hidden border-4 border-green-500 dark:border-green-400">
+              <Image
+                src={viewingAvatar.url}
+                alt={viewingAvatar.name}
+                width={320}
+                height={320}
+                className="w-full h-full object-cover"
+                unoptimized
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
   )
 }
