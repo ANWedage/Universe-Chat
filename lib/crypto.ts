@@ -111,7 +111,7 @@ export async function decryptMessage(
     const decoder = new TextDecoder()
     return decoder.decode(decryptedData)
   } catch (error) {
-    console.error('Decryption error:', error)
-    return '[Encrypted message - unable to decrypt]'
+    // Return error indicator without throwing
+    return '[Unable to decrypt]'
   }
 }

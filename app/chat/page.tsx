@@ -4,15 +4,34 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload } from 'lucide-react'
+import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
+
+const emojis = [
+  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
+  '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥',
+  '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '😶‍🌫️', '🥴', '😵', '🤯', '🤠', '🥳', '😎',
+  '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖',
+  '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '👍', '👎', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✌️', '🤞',
+  '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '👋', '🤚', '🖐️', '✋', '🖖', '💪', '🦾', '🖕', '✍️', '🤳', '💅', '🦵',
+  '🦿', '🦶', '👂', '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄', '💋', '🩸', '❤️', '🧡', '💛', '💚', '💙', '💜',
+  '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯',
+  '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️',
+  '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️',
+  '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭',
+  '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️',
+  '❎', '🌐', '💠', '🎉', '🎊', '🎁', '🎈', '🎀', '🎂', '🎄', '🎃', '👻', '🎅', '🎆', '🎇', '🧨', '✨', '🎋', '🎍', '🎎',
+  '🎏', '🎐', '🎑', '🧧', '🎀', '🎗️', '🎟️', '🎫', '🎖️', '🏆', '🏅', '🥇', '🥈', '🥉', '⚽', '⚾', '🥎', '🏀', '🏐', '🏈',
+  '🏉', '🎾', '🥏', '🎳', '🏏', '🏑', '🏒', '🥍', '🏓', '🏸', '🥊', '🥋', '🥅', '⛳', '⛸️', '🎣', '🤿', '🎽', '🎿', '🛷'
+]
 
 type Profile = {
   id: string
   username: string
   full_name: string
   avatar_url: string | null
+  last_seen: string | null
 }
 
 type Message = {
@@ -39,6 +58,7 @@ export default function Chat() {
   const [showSettings, setShowSettings] = useState(false)
   const [deleteTimer, setDeleteTimer] = useState<'24h' | '7d' | 'immediately' | 'off'>('off')
   const [editedName, setEditedName] = useState('')
+  const [fontSize, setFontSize] = useState<number>(14)
   const [unreadConversations, setUnreadConversations] = useState<Array<{ user: Profile; count: number }>>([])
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmUsername, setDeleteConfirmUsername] = useState('')
@@ -55,9 +75,32 @@ export default function Chat() {
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [viewingAvatar, setViewingAvatar] = useState<{ url: string; name: string } | null>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  // Helper function to check if user is online (active within last 30 seconds)
+  const isUserOnline = (lastSeen: string | null) => {
+    if (!lastSeen) return false
+    const lastSeenDate = new Date(lastSeen)
+    const now = new Date()
+    const diffInSeconds = (now.getTime() - lastSeenDate.getTime()) / 1000
+    return diffInSeconds < 30
+  }
+
+  // Update user's last_seen timestamp
+  const updateLastSeen = async () => {
+    if (!currentUser) return
+    try {
+      await supabase
+        .from('profiles')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('id', currentUser.id)
+    } catch (error) {
+      console.error('Error updating last seen:', error)
+    }
+  }
 
   useEffect(() => {
     loadUser()
@@ -67,6 +110,31 @@ export default function Chat() {
     document.addEventListener('click', handleClick)
     return () => document.removeEventListener('click', handleClick)
   }, [])
+
+  // Update last_seen when user is logged in
+  useEffect(() => {
+    if (!currentUser) return
+
+    // Update last_seen immediately
+    updateLastSeen()
+
+    // Update last_seen every 1 second for immediate status
+    const lastSeenInterval = setInterval(() => {
+      updateLastSeen()
+    }, 1000)
+
+    // Update last_seen on page unload/close
+    const handleBeforeUnload = () => {
+      updateLastSeen()
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      clearInterval(lastSeenInterval)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      updateLastSeen()
+    }
+  }, [currentUser])
 
   useEffect(() => {
     if (currentUser) {
@@ -152,10 +220,41 @@ export default function Chat() {
         )
         .subscribe()
 
+      // Subscribe to profile updates for last_seen status
+      const profileUpdatesChannel = supabase
+        .channel('profile-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+          },
+          (payload) => {
+            const updatedProfile = payload.new as Profile
+            // Update users list with new last_seen
+            setUsers((current) => 
+              current.map(u => u.id === updatedProfile.id ? updatedProfile : u)
+            )
+            setFilteredUsers((current) => 
+              current.map(u => u.id === updatedProfile.id ? updatedProfile : u)
+            )
+            setMyChatsUsers((current) => 
+              current.map(u => u.id === updatedProfile.id ? updatedProfile : u)
+            )
+            // Update selectedUser if it's the one that changed
+            setSelectedUser((current) => 
+              current && current.id === updatedProfile.id ? updatedProfile : current
+            )
+          }
+        )
+        .subscribe()
+
       return () => {
         clearInterval(cleanupInterval)
         supabase.removeChannel(profilesChannel)
         supabase.removeChannel(incomingChannel)
+        supabase.removeChannel(profileUpdatesChannel)
       }
     }
   }, [currentUser, searchQuery])
@@ -234,17 +333,12 @@ export default function Chat() {
       const newDecrypted = new Map<string, string>()
       
       for (const message of messages) {
-        try {
-          const decrypted = await decryptMessage(
-            message.content,
-            message.sender_id,
-            message.receiver_id
-          )
-          newDecrypted.set(message.id, decrypted)
-        } catch (error) {
-          console.error('Failed to decrypt message:', error)
-          newDecrypted.set(message.id, '[Encrypted]')
-        }
+        const decrypted = await decryptMessage(
+          message.content,
+          message.sender_id,
+          message.receiver_id
+        )
+        newDecrypted.set(message.id, decrypted)
       }
       
       setDecryptedMessages(newDecrypted)
@@ -642,6 +736,8 @@ export default function Chat() {
   }
 
   const handleLogout = async () => {
+    // Update last_seen before logging out
+    await updateLastSeen()
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -1130,8 +1226,23 @@ export default function Chat() {
                     <h2 className="font-semibold text-gray-900 dark:text-white">
                       {selectedUser.full_name}
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      @{selectedUser.username}
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {isUserOnline(selectedUser.last_seen) ? (
+                        <span className="text-green-500 flex items-center">
+                          <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>
+                          Online
+                        </span>
+                      ) : selectedUser.last_seen ? (
+                        `Last seen ${new Date(selectedUser.last_seen).toLocaleString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          hour: 'numeric', 
+                          minute: '2-digit', 
+                          hour12: true 
+                        })}`
+                      ) : (
+                        '@' + selectedUser.username
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1251,7 +1362,7 @@ export default function Chat() {
                             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
                         }`}
                       >
-                        <span className="text-sm break-words leading-tight">
+                        <span className="break-words leading-tight" style={{ fontSize: `${fontSize}px` }}>
                           {decryptedMessages.get(message.id) || 'Decrypting...'}{' '}
                           <span
                             className={`text-[10px] whitespace-nowrap ${
@@ -1318,7 +1429,35 @@ export default function Chat() {
 
             {/* Message Input */}
             <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-              <form onSubmit={sendMessage} className="flex space-x-2">
+              <form onSubmit={sendMessage} className="flex space-x-2 relative">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="px-3 py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <Smile className="w-6 h-6" />
+                  </button>
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-80 max-h-64 overflow-y-auto scrollbar-hide z-50">
+                      <div className="grid grid-cols-8 gap-2">
+                        {emojis.map((emoji, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              setNewMessage(newMessage + emoji)
+                              setShowEmojiPicker(false)
+                            }}
+                            className="text-2xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={newMessage}
@@ -1357,8 +1496,8 @@ export default function Chat() {
     {/* Settings Modal */}
     {showSettings && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
             <button
               onClick={() => setShowSettings(false)}
@@ -1368,7 +1507,7 @@ export default function Chat() {
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-4">
             {/* Profile Picture Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1412,7 +1551,7 @@ export default function Chat() {
                     {uploadingAvatar ? 'Uploading...' : 'Upload Picture'}
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Max 5MB. JPG, PNG, or GIF
+                    Max 5MB. (JPG, PNG)
                   </p>
                 </div>
               </div>
@@ -1483,6 +1622,34 @@ export default function Chat() {
               </div>
             </div>
 
+            {/* Message Font Size Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Message Font Size
+              </label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Small</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{fontSize}px</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Large</span>
+                </div>
+                <input
+                  type="range"
+                  min="12"
+                  max="20"
+                  step="1"
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-green-600"
+                />
+                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                  <p style={{ fontSize: `${fontSize}px` }} className="text-gray-900 dark:text-white">
+                    Preview: This is how your messages will look
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Delete Account Section */}
             <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h3>
@@ -1500,8 +1667,10 @@ export default function Chat() {
                 Delete Account
               </button>
             </div>
+          </div>
 
-            <div className="flex gap-3 pt-4">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex gap-3">
               <button
                 onClick={() => setShowSettings(false)}
                 className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
