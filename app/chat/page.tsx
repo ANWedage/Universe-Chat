@@ -323,7 +323,7 @@ export default function Chat() {
         .eq('read', false)
 
       // Refresh unread conversations
-      loadUnreadConversations()
+      await loadUnreadConversations()
     } catch (error) {
       console.error('Error loading messages:', error)
     }
@@ -378,6 +378,9 @@ export default function Chat() {
         console.error('Error deleting messages:', error)
       }
     }
+    // Refresh unread conversations first to ensure read status is reflected
+    await loadUnreadConversations()
+    // Then close the chat
     setSelectedUser(null)
   }
 
