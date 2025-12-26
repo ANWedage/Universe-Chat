@@ -1519,15 +1519,13 @@ export default function Chat() {
                         )}
                       </div>
                       {isDeletable && !multiSelectMode && (
-                        <div className="relative md:hidden">
+                        <div className="relative">
                           <button
                             onClick={() => {
                               setMessageMenuOpen(messageMenuOpen === message.id ? null : message.id)
                               setShowDeleteSubmenu(false)
                             }}
                             className={`p-1 rounded-lg transition-opacity ${
-                              messageMenuOpen === message.id ? 'opacity-100' : 'opacity-0'
-                            } ${
                               isSent 
                                 ? 'hover:bg-white/20 text-white' 
                                 : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
