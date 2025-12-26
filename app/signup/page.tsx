@@ -96,11 +96,11 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900 px-4 py-8">
+    <div className="min-h-[100vh] min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900 px-4 py-8">
       {/* Home Button */}
       <Link
         href="/"
-        className="fixed top-6 left-6 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-200 dark:border-gray-700"
+        className="fixed top-4 left-4 md:top-6 md:left-6 p-2 md:p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-200 dark:border-gray-700 z-10"
         title="Back to Home"
       >
         <Home className="w-6 h-6 text-green-600 dark:text-green-400" />

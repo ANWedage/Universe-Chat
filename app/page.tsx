@@ -4,8 +4,8 @@ import { MessageSquare, Users, Zap, Shield } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900">
-      <main className="container mx-auto px-4 py-16">
+    <div className="min-h-[100vh] min-h-[100dvh] bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900">
+      <main className="container mx-auto px-4 py-8 md:py-16">
         {/* Hero Section */}
         <div className="text-center mb-20">
           <div className="flex items-center justify-center mb-6">
