@@ -87,9 +87,10 @@ export default function Login() {
           <Image
             src="/logo.png"
             alt="Universe Chat Logo"
-            width={80}
-            height={80}
+            width={60}
+            height={60}
             priority
+            unoptimized
           />
         </div>
         

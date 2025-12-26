@@ -114,6 +114,7 @@ export default function SignUp() {
             width={60}
             height={60}
             priority
+            unoptimized
           />
         </div>
         

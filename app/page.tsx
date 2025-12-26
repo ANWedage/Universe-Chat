@@ -15,6 +15,7 @@ export default function Home() {
               width={80}
               height={80}
               priority
+              unoptimized
             />
           </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent">

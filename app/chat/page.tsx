@@ -677,6 +677,7 @@ export default function Chat() {
                 width={40}
                 height={40}
                 priority
+                unoptimized
               />
               <h1 className="text-xl font-bold text-white">Universe Chat</h1>
             </div>
