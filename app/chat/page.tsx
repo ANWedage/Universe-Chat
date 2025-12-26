@@ -1279,11 +1279,11 @@ export default function Chat() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 w-full md:w-auto min-h-0">
+      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 w-full md:w-auto min-h-0 h-full">
         {selectedUser ? (
-          <>
+          <div className="flex flex-col h-full">
             {/* Chat Header */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0 sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 {/* Mobile Menu Button */}
                 <button
@@ -1542,7 +1542,7 @@ export default function Chat() {
             </div>
 
             {/* Message Input */}
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
+            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0 sticky bottom-0 z-10">
               <form onSubmit={sendMessage} className="flex space-x-1 md:space-x-2 relative">
                 <div className="flex items-center">
                   <button
@@ -1598,7 +1598,7 @@ export default function Chat() {
                 </button>
               </form>
             </div>
-          </>
+          </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
             {/* Mobile Menu Button for empty state */}
