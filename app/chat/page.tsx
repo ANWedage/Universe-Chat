@@ -81,6 +81,7 @@ export default function Chat() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messageInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -604,6 +605,11 @@ export default function Chat() {
 
     const messageContent = newMessage.trim()
     setNewMessage('') // Clear input immediately for better UX
+    
+    // Blur the input to prevent zoom issues on mobile
+    if (messageInputRef.current) {
+      messageInputRef.current.blur()
+    }
 
     try {
       // Encrypt the message before sending
@@ -629,6 +635,11 @@ export default function Chat() {
           return [...current, data[0] as Message]
         })
       }
+      
+      // Scroll to bottom after sending
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
     } catch (error) {
       console.error('Error sending message:', error)
       setNewMessage(messageContent) // Restore message on error
@@ -1615,11 +1626,13 @@ export default function Chat() {
                   )}
                 </div>
                 <input
+                  ref={messageInputRef}
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
+                  className="flex-1 px-3 md:px-4 py-2 md:py-3 text-base bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
+                  style={{ fontSize: '16px' }}
                 />
                 <button
                   type="submit"
