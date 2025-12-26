@@ -160,13 +160,27 @@ export default function Chat() {
             schema: 'public',
             table: 'messages',
           },
-          (payload) => {
+          async (payload) => {
             const newMessage = payload.new as Message
             // Only add message if it's part of this conversation
             if (
               (newMessage.sender_id === currentUser.id && newMessage.receiver_id === selectedUser.id) ||
               (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === currentUser.id)
             ) {
+              // Mark message as read if it's from the other user and we're viewing the chat
+              if (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === currentUser.id) {
+                await supabase
+                  .from('messages')
+                  .update({ read: true })
+                  .eq('id', newMessage.id)
+                
+                // Update the message in state with read: true
+                newMessage.read = true
+                
+                // Refresh unread conversations count
+                await loadUnreadConversations()
+              }
+              
               setMessages((current) => {
                 // Avoid duplicates
                 const exists = current.some(msg => msg.id === newMessage.id)
