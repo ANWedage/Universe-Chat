@@ -1115,7 +1115,10 @@ export default function Chat() {
               {unreadConversations.filter(({ user }) => user.id !== selectedUser?.id).map(({ user, count }) => (
                 <button
                   key={user.id}
-                  onClick={() => setSelectedUser(user)}
+                  onClick={() => {
+                    setSelectedUser(user)
+                    setIsSidebarOpen(false)
+                  }}
                   className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition relative bg-green-50/50 dark:bg-green-900/10"
                 >
                   <div 
