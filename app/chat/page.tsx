@@ -135,6 +135,20 @@ export default function Chat() {
             loadUnreadConversations()
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id=eq.${currentUser.id}`,
+          },
+          (payload) => {
+            console.log('Message updated:', payload.new)
+            // Reload unread count when message read status changes
+            loadUnreadConversations()
+          }
+        )
         .subscribe()
 
       return () => {
