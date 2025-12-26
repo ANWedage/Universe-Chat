@@ -1054,13 +1054,22 @@ export default function Chat() {
               />
               <h1 className="text-lg md:text-xl font-bold text-white">Universe Chat</h1>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-white/20 active:bg-white/30 rounded-lg transition text-white"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="md:hidden p-2 hover:bg-white/20 active:bg-white/30 rounded-lg transition text-white"
+                title="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-2 hover:bg-white/20 active:bg-white/30 rounded-lg transition text-white"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
           </div>
           
           <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
