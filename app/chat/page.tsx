@@ -49,6 +49,8 @@ export default function Chat() {
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set())
   const [showMultiSelectMenu, setShowMultiSelectMenu] = useState(false)
   const [showMultiSelectDeleteSubmenu, setShowMultiSelectDeleteSubmenu] = useState(false)
+  const [activeTab, setActiveTab] = useState<'all' | 'myChats'>('all')
+  const [myChatsUsers, setMyChatsUsers] = useState<Profile[]>([])
   const router = useRouter()
   const supabase = createClient()
 
@@ -178,12 +180,13 @@ export default function Chat() {
   }, [selectedUser, currentUser])
 
   useEffect(() => {
-    const filtered = users.filter((user) =>
+    const baseUsers = activeTab === 'all' ? users : myChatsUsers
+    const filtered = baseUsers.filter((user) =>
       user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.full_name.toLowerCase().includes(searchQuery.toLowerCase())
     )
     setFilteredUsers(filtered)
-  }, [searchQuery, users])
+  }, [searchQuery, users, myChatsUsers, activeTab])
 
   // Decrypt messages when they change
   useEffect(() => {
@@ -263,8 +266,55 @@ export default function Chat() {
 
       setUsers(data || [])
       setFilteredUsers(data || [])
+      
+      // Load users with recent chats
+      await loadMyChatsUsers()
     } catch (error) {
       console.error('Error loading users:', error)
+    }
+  }
+
+  const loadMyChatsUsers = async () => {
+    if (!currentUser) return
+
+    try {
+      // Get all messages where current user is sender or receiver
+      const { data: recentMessages } = await supabase
+        .from('messages')
+        .select('sender_id, receiver_id')
+        .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+        .order('created_at', { ascending: false })
+
+      if (!recentMessages || recentMessages.length === 0) {
+        setMyChatsUsers([])
+        return
+      }
+
+      // Get unique user IDs from conversations
+      const userIds = new Set<string>()
+      recentMessages.forEach((msg) => {
+        if (msg.sender_id !== currentUser.id) {
+          userIds.add(msg.sender_id)
+        }
+        if (msg.receiver_id !== currentUser.id) {
+          userIds.add(msg.receiver_id)
+        }
+      })
+
+      if (userIds.size === 0) {
+        setMyChatsUsers([])
+        return
+      }
+
+      // Get profiles for these users
+      const { data: chatUsers } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', Array.from(userIds))
+
+      setMyChatsUsers(chatUsers || [])
+    } catch (error) {
+      console.error('Error loading my chats users:', error)
     }
   }
 
@@ -743,6 +793,32 @@ export default function Chat() {
             </div>
           </>
         )}
+
+        {/* Tabs */}
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'all'
+                  ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              All ({users.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('myChats')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'myChats'
+                  ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              My Chats ({myChatsUsers.length})
+            </button>
+          </div>
+        </div>
 
         {/* Search */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
