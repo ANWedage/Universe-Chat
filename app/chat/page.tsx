@@ -1245,18 +1245,18 @@ export default function Chat() {
                         </button>
                       )}
                       <div
-                        className={`inline-block max-w-[100%] rounded-md px-2.5 py-1 ${
+                        className={`inline-block max-w-[65%] rounded-md px-2.5 py-1.5 ${
                           isSent
                             ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
                             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
                         }`}
                       >
-                        <div className="flex flex-col">
-                          <p className="text-sm break-words leading-tight pr-12">
+                        <div className="flex flex-wrap items-end gap-1">
+                          <span className="text-sm whitespace-pre-wrap break-words leading-tight">
                             {decryptedMessages.get(message.id) || 'Decrypting...'}
-                          </p>
+                          </span>
                           <span
-                            className={`text-[10px] whitespace-nowrap self-end -mt-3 ${
+                            className={`text-[10px] whitespace-nowrap ml-1 ${
                               isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
                             }`}
                           >
