@@ -43,6 +43,7 @@ type Message = {
   read: boolean
   deleted_by_sender: boolean
   deleted_by_receiver: boolean
+  image_url: string | null
 }
 
 export default function Chat() {
@@ -76,6 +77,8 @@ export default function Chat() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [viewingAvatar, setViewingAvatar] = useState<{ url: string; name: string } | null>(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -528,6 +531,69 @@ export default function Chat() {
       await loadUnreadConversations()
     } catch (error) {
       console.error('Error loading messages:', error)
+    }
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return
+    const file = e.target.files[0]
+    
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB')
+      return
+    }
+    
+    setSelectedImage(file)
+    sendImageMessage(file)
+  }
+
+  const sendImageMessage = async (file: File) => {
+    if (!selectedUser || !currentUser) return
+    
+    setUploadingImage(true)
+    
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`
+      const filePath = `chat-images/${fileName}`
+      
+      const { error: uploadError } = await supabase.storage
+        .from('chat-attachments')
+        .upload(filePath, file)
+      
+      if (uploadError) throw uploadError
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(filePath)
+      
+      const { data, error } = await supabase.from('messages').insert({
+        sender_id: currentUser.id,
+        receiver_id: selectedUser.id,
+        content: '',
+        image_url: publicUrl,
+      }).select()
+      
+      if (error) throw error
+      
+      if (data && data.length > 0) {
+        setMessages((current) => {
+          const exists = current.some(msg => msg.id === data[0].id)
+          if (exists) return current
+          return [...current, data[0] as Message]
+        })
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('Failed to send image. Please try again.')
+    } finally {
+      setUploadingImage(false)
+      setSelectedImage(null)
     }
   }
 
@@ -1362,16 +1428,39 @@ export default function Chat() {
                             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
                         }`}
                       >
-                        <span className="break-words leading-tight" style={{ fontSize: `${fontSize}px` }}>
-                          {decryptedMessages.get(message.id) || 'Decrypting...'}{' '}
-                          <span
-                            className={`text-[10px] whitespace-nowrap ${
-                              isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+                        {message.image_url ? (
+                          <div className="space-y-1">
+                            <img 
+                              src={message.image_url} 
+                              alt="Shared image" 
+                              className="max-w-full max-h-80 rounded cursor-pointer"
+                              onClick={() => window.open(message.image_url!, '_blank')}
+                            />
+                            {message.content && (
+                              <span className="block break-words leading-tight" style={{ fontSize: `${fontSize}px` }}>
+                                {decryptedMessages.get(message.id) || 'Decrypting...'}
+                              </span>
+                            )}
+                            <span
+                              className={`block text-[10px] whitespace-nowrap text-right ${
+                                isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="break-words leading-tight" style={{ fontSize: `${fontSize}px` }}>
+                            {decryptedMessages.get(message.id) || 'Decrypting...'}{' '}
+                            <span
+                              className={`text-[10px] whitespace-nowrap ${
+                                isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+                            </span>
                           </span>
-                        </span>
+                        )}
                       </div>
                       {isDeletable && !multiSelectMode && (
                         <div className="relative">
@@ -1430,7 +1519,7 @@ export default function Chat() {
             {/* Message Input */}
             <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
               <form onSubmit={sendMessage} className="flex space-x-2 relative">
-                <div className="relative">
+                <div className="flex items-center">
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -1438,6 +1527,16 @@ export default function Chat() {
                   >
                     <Smile className="w-6 h-6" />
                   </button>
+                  <label className="px-3 py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                      disabled={uploadingImage}
+                    />
+                    <Upload className={`w-6 h-6 ${uploadingImage ? 'opacity-50' : ''}`} />
+                  </label>
                   {showEmojiPicker && (
                     <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-80 max-h-64 overflow-y-auto scrollbar-hide z-50">
                       <div className="grid grid-cols-8 gap-2">
