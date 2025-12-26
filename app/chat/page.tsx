@@ -1245,24 +1245,24 @@ export default function Chat() {
                         </button>
                       )}
                       <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                        className={`inline-block max-w-[75%] rounded-md px-2.5 py-1 ${
                           isSent
                             ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
                             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
                         }`}
                       >
-                        <p className="text-sm break-words">
-                          {decryptedMessages.get(message.id) || 'Decrypting...'}
-                        </p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
-                          }`}
-                        >
-                          {formatDistanceToNow(new Date(message.created_at), {
-                            addSuffix: true,
-                          })}
-                        </p>
+                        <div className="flex flex-col">
+                          <p className="text-sm break-words leading-tight pr-12">
+                            {decryptedMessages.get(message.id) || 'Decrypting...'}
+                          </p>
+                          <span
+                            className={`text-[10px] whitespace-nowrap self-end -mt-3 ${
+                              isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+                          </span>
+                        </div>
                       </div>
                       {isDeletable && !multiSelectMode && (
                         <div className="relative">
