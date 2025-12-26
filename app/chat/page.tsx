@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -55,6 +55,7 @@ export default function Chat() {
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [viewingAvatar, setViewingAvatar] = useState<{ url: string; name: string } | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -251,6 +252,11 @@ export default function Chat() {
 
     decryptAllMessages()
   }, [messages, currentUser, selectedUser])
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const loadUser = async () => {
     try {
@@ -1309,6 +1315,7 @@ export default function Chat() {
                   </div>
                 )
               })}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
