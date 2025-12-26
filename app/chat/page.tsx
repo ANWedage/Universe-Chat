@@ -1283,7 +1283,7 @@ export default function Chat() {
         {selectedUser ? (
           <>
             {/* Chat Header */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
               <div className="flex items-center justify-between">
                 {/* Mobile Menu Button */}
                 <button
@@ -1371,7 +1371,7 @@ export default function Chat() {
 
             {/* Multi-select Toolbar */}
             {multiSelectMode && selectedMessages.size > 0 && (
-              <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-3">
+              <div className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800 px-4 py-3 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-green-700 dark:text-green-400">
                     {selectedMessages.size} message{selectedMessages.size !== 1 ? 's' : ''} selected
@@ -1422,7 +1422,7 @@ export default function Chat() {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide min-h-0">
               {messages.map((message, index) => {
                 const isSent = message.sender_id === currentUser?.id
                 const isDeletable = canDeleteMessage(message)
