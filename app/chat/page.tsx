@@ -1247,22 +1247,20 @@ export default function Chat() {
                       <div
                         className={`inline-block max-w-[65%] rounded-md px-2.5 py-1.5 ${
                           isSent
-                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
+                            ? 'bg-gradient-to-r from-green-700 to-emerald-700 text-white'
                             : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
                         }`}
                       >
-                        <div className="flex flex-wrap items-end gap-1">
-                          <span className="text-sm whitespace-pre-wrap break-words leading-tight">
-                            {decryptedMessages.get(message.id) || 'Decrypting...'}
-                          </span>
+                        <span className="text-sm break-words leading-tight">
+                          {decryptedMessages.get(message.id) || 'Decrypting...'}{' '}
                           <span
-                            className={`text-[10px] whitespace-nowrap ml-1 ${
+                            className={`text-[10px] whitespace-nowrap ${
                               isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
                             }`}
                           >
                             {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
                           </span>
-                        </div>
+                        </span>
                       </div>
                       {isDeletable && !multiSelectMode && (
                         <div className="relative">
