@@ -1012,7 +1012,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="h-[100vh] h-[100dvh] max-h-[100vh] max-h-[100dvh] flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
+    <div className="fixed inset-0 flex flex-col bg-gray-100 dark:bg-gray-900">
       <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Mobile Overlay */}
         {isSidebarOpen && (
@@ -1283,7 +1283,7 @@ export default function Chat() {
         {selectedUser ? (
           <div className="flex flex-col h-full">
             {/* Chat Header */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0 sticky top-0 z-10">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
               <div className="flex items-center justify-between">
                 {/* Mobile Menu Button */}
                 <button
@@ -1542,7 +1542,7 @@ export default function Chat() {
             </div>
 
             {/* Message Input */}
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0 sticky bottom-0 z-10">
+            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
               <form onSubmit={sendMessage} className="flex space-x-1 md:space-x-2 relative">
                 <div className="flex items-center">
                   <button

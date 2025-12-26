@@ -72,7 +72,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[100vh] min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900 px-4 py-8">
+    <div className="fixed inset-0 overflow-y-auto flex items-center justify-center bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900 px-4 py-8">
       {/* Home Button */}
       <Link
         href="/"
