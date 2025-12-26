@@ -1012,8 +1012,8 @@ export default function Chat() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
-      <div className="flex flex-1 overflow-hidden relative">
+    <div className="h-[100vh] h-[100dvh] max-h-[100vh] max-h-[100dvh] flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Mobile Overlay */}
         {isSidebarOpen && (
           <div 
