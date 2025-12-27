@@ -7,7 +7,6 @@ import Image from 'next/image'
 import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile, Menu } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
-import { initializePushNotifications, removePushNotifications } from '@/lib/notifications'
 
 const emojis = [
   '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
@@ -110,11 +109,6 @@ export default function Chat() {
 
   useEffect(() => {
     loadUser()
-    
-    // Initialize push notifications (only on mobile)
-    if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      initializePushNotifications()
-    }
     
     // Add click handler to close context menu
     const handleClick = () => setContextMenuUser(null)
@@ -822,10 +816,6 @@ export default function Chat() {
   const handleLogout = async () => {
     // Update last_seen before logging out
     await updateLastSeen()
-    // Remove push notifications (only on mobile)
-    if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      await removePushNotifications()
-    }
     await supabase.auth.signOut()
     router.push('/login')
   }
