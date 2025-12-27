@@ -613,19 +613,37 @@ export default function Chat() {
 
     try {
       // Encrypt the message before sending
-      const encryptedContent = await encryptMessage(
-        messageContent,
-        currentUser.id,
-        selectedUser.id
-      )
+      console.log('Starting message send...')
+      console.log('Current user:', currentUser.id)
+      console.log('Selected user:', selectedUser.id)
+      console.log('Message content:', messageContent)
+      
+      let encryptedContent
+      try {
+        encryptedContent = await encryptMessage(
+          messageContent,
+          currentUser.id,
+          selectedUser.id
+        )
+        console.log('Message encrypted successfully')
+      } catch (encryptError) {
+        console.error('Encryption failed:', encryptError)
+        throw new Error('Failed to encrypt message: ' + (encryptError instanceof Error ? encryptError.message : 'Unknown error'))
+      }
 
+      console.log('Attempting database insert...')
       const { data, error } = await supabase.from('messages').insert({
         sender_id: currentUser.id,
         receiver_id: selectedUser.id,
         content: encryptedContent, // Store encrypted content
       }).select()
 
-      if (error) throw error
+      console.log('Insert response:', { data, error })
+
+      if (error) {
+        console.error('Database error:', error)
+        throw new Error('Database error: ' + error.message)
+      }
 
       // If realtime doesn't work, add message manually
       if (data && data.length > 0) {
@@ -642,6 +660,10 @@ export default function Chat() {
       }, 100)
     } catch (error) {
       console.error('Error sending message:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      console.error('Error type:', typeof error)
+      console.error('Error constructor:', error?.constructor?.name)
+      alert(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setNewMessage(messageContent) // Restore message on error
     }
   }

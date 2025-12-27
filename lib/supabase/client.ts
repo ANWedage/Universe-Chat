@@ -1,6 +1,9 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { Preferences } from '@capacitor/preferences'
 
+// Check if running in Capacitor (mobile app)
+const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor
+
 // Custom storage adapter for Capacitor
 const capacitorStorage = {
   getItem: async (key: string) => {
@@ -15,13 +18,29 @@ const capacitorStorage = {
   },
 }
 
+// Browser storage adapter (fallback for web)
+const browserStorage = {
+  getItem: (key: string) => {
+    if (typeof window === 'undefined') return null
+    return window.localStorage.getItem(key)
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(key, value)
+  },
+  removeItem: (key: string) => {
+    if (typeof window === 'undefined') return
+    window.localStorage.removeItem(key)
+  },
+}
+
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        storage: capacitorStorage,
+        storage: isCapacitor ? capacitorStorage : browserStorage,
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
