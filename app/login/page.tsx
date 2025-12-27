@@ -72,17 +72,17 @@ export default function Login() {
   }
 
   return (
-    <div className="fixed inset-0 overflow-y-auto flex items-center justify-center bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900 px-4 py-8">
+    <div className="fixed inset-0 overflow-y-auto flex items-center justify-center bg-gradient-to-br from-gray-900 via-green-900 to-emerald-900 px-4 py-8">
       {/* Home Button */}
       <Link
         href="/"
-        className="fixed top-4 left-4 md:top-6 md:left-6 p-2 md:p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-200 dark:border-gray-700 z-10"
+        className="fixed top-4 left-4 md:top-6 md:left-6 p-2 md:p-3 bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-gray-700 z-10"
         title="Back to Home"
       >
-        <Home className="w-6 h-6 text-green-600 dark:text-green-400" />
+        <Home className="w-6 h-6 text-green-400" />
       </Link>
       
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
+      <div className="max-w-md w-full bg-gray-800 rounded-2xl shadow-2xl p-8">
         <div className="flex items-center justify-center mb-6">
           <Image
             src="/logo.png"
@@ -97,17 +97,17 @@ export default function Login() {
         <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
           Welcome Back
         </h1>
-        <p className="text-center text-gray-600 dark:text-gray-400 mb-8">
+        <p className="text-center text-gray-400 mb-8">
           Sign in to continue chatting
         </p>
 
         {!isConfigured && (
-          <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600 rounded-lg p-4">
+          <div className="mb-6 bg-yellow-900/30 border border-yellow-600 rounded-lg p-4">
             <div className="flex items-start space-x-2">
-              <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-yellow-800 dark:text-yellow-300">
+              <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-yellow-300">
                 <p className="font-semibold mb-1">Supabase Setup Required</p>
-                <p>Please configure Supabase to use authentication. See <code className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">SETUP.md</code> for instructions.</p>
+                <p>Please configure Supabase to use authentication. See <code className="bg-yellow-800 px-1 rounded">SETUP.md</code> for instructions.</p>
               </div>
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
               Username
             </label>
             <input
@@ -124,13 +124,13 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
               required
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
+              className="w-full px-4 py-3 rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-700 text-white transition"
               placeholder="johndoe"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
               Password
             </label>
             <input
@@ -139,13 +139,13 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
+              className="w-full px-4 py-3 rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-700 text-white transition"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-900/30 border border-red-800 text-red-400 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -159,9 +159,9 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-8 text-center text-sm text-gray-400">
           Don't have an account?{' '}
-          <Link href="/signup" className="font-semibold text-green-600 hover:text-green-500 dark:text-green-400">
+          <Link href="/signup" className="font-semibold text-green-400 hover:text-green-300">
             Sign up
           </Link>
         </p>

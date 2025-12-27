@@ -1016,7 +1016,7 @@ export default function Chat() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-100 via-emerald-50 to-teal-100 dark:from-gray-900 dark:via-green-900 dark:to-emerald-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+          <p className="mt-4 text-gray-400">Loading...</p>
         </div>
       </div>
     )
@@ -1035,12 +1035,12 @@ export default function Chat() {
         
         {/* Sidebar */}
         <div className={`
-          w-full sm:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
+          w-full sm:w-80 bg-gray-800 border-r border-gray-700 flex flex-col
           fixed md:relative inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
         {/* Header */}
-        <div className="p-3 md:p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-green-600 to-emerald-600">
+        <div className="p-3 md:p-4 border-b border-gray-700 bg-gradient-to-r from-green-600 to-emerald-600">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <div className="flex items-center space-x-2 md:space-x-3">
               <Image
@@ -1072,7 +1072,7 @@ export default function Chat() {
             </div>
           </div>
           
-          <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
+          <div className="bg-gray-700 rounded-lg p-3">
             <div className="flex items-center space-x-3">
               <div 
                 className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition"
@@ -1092,10 +1092,10 @@ export default function Chat() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                <p className="text-sm font-semibold text-white truncate">
                   {currentUser?.full_name}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-400 truncate">
                   @{currentUser?.username}
                 </p>
               </div>
@@ -1119,7 +1119,7 @@ export default function Chat() {
                     setSelectedUser(user)
                     setIsSidebarOpen(false)
                   }}
-                  className="w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition relative bg-green-50/50 dark:bg-green-900/10"
+                  className="w-full p-4 flex items-center space-x-3 hover:bg-gray-700 transition relative bg-green-50/50 dark:bg-green-900/10"
                 >
                   <div 
                     className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 relative overflow-hidden cursor-pointer hover:opacity-80 transition"
@@ -1147,7 +1147,7 @@ export default function Chat() {
                     </div>
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-bold text-white truncate">
                       {user.full_name}
                     </p>
                     <p className="text-xs text-green-600 dark:text-green-400 font-semibold truncate">
@@ -1161,14 +1161,14 @@ export default function Chat() {
         )}
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-700">
           <div className="flex">
             <button
               onClick={() => setActiveTab('all')}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'all'
-                  ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'
+                  ? 'text-green-400 border-b-2 border-green-400 bg-green-900/20'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
             >
               All ({users.length})
@@ -1177,8 +1177,8 @@ export default function Chat() {
               onClick={() => setActiveTab('myChats')}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === 'myChats'
-                  ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'
+                  ? 'text-green-400 border-b-2 border-green-400 bg-green-900/20'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
             >
               My Chats ({myChatsUsers.length})
@@ -1187,7 +1187,7 @@ export default function Chat() {
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-700">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -1196,7 +1196,7 @@ export default function Chat() {
                 placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
+                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400"
               />
             </div>
             <button
@@ -1212,7 +1212,7 @@ export default function Chat() {
         {/* Users List */}
         <div className="flex-1 overflow-y-auto scrollbar-hide">
           {filteredUsers.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-4 text-center text-gray-400">
               No users found
             </div>
           ) : (
@@ -1224,8 +1224,8 @@ export default function Chat() {
                     setIsSidebarOpen(false)
                   }}
                   onContextMenu={(e) => handleRightClick(e, user.id)}
-                  className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
-                    selectedUser?.id === user.id ? 'bg-green-50 dark:bg-green-900/30 border-l-4 border-green-600' : ''
+                  className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-700 transition ${
+                    selectedUser?.id === user.id ? 'bg-green-900/30 border-l-4 border-green-600' : ''
                   }`}
                 >
                   <div 
@@ -1251,10 +1251,10 @@ export default function Chat() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-semibold text-white truncate">
                       {user.full_name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-xs text-gray-400 truncate">
                       @{user.username}
                     </p>
                   </div>
@@ -1273,12 +1273,12 @@ export default function Chat() {
               left: `${contextMenuPosition.x}px`,
               zIndex: 1000,
             }}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+            className="bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-1 min-w-[160px]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => handleDeleteChat(contextMenuUser)}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
             >
               <Trash2 className="w-4 h-4" />
               <span>Delete Chat</span>
@@ -1287,33 +1287,33 @@ export default function Chat() {
         )}
 
         {/* Settings Button */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-t border-gray-700">
           <button
             onClick={() => {
               setEditedName(currentUser?.full_name || '')
               setShowSettings(true)
             }}
-            className="w-full flex items-center space-x-3 p-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition"
+            className="w-full flex items-center space-x-3 p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
           >
-            <Settings className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Settings</span>
+            <Settings className="w-5 h-5 text-gray-300" />
+            <span className="text-sm font-medium text-gray-200">Settings</span>
           </button>
         </div>
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 w-full md:w-auto min-h-0 h-full">
+      <div className="flex-1 flex flex-col bg-gray-900 w-full md:w-auto min-h-0 h-full">
         {selectedUser ? (
           <div className="flex flex-col h-full">
             {/* Chat Header */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
+            <div className="bg-gray-800 border-b border-gray-700 p-3 md:p-4 flex-shrink-0">
               <div className="flex items-center justify-between">
                 {/* Mobile Menu Button */}
                 <button
                   onClick={() => setIsSidebarOpen(true)}
-                  className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition mr-2 flex-shrink-0"
+                  className="md:hidden p-2 hover:bg-gray-700 rounded-lg transition mr-2 flex-shrink-0"
                 >
-                  <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                  <Menu className="w-6 h-6 text-gray-400" />
                 </button>
                 
                 <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
@@ -1337,11 +1337,11 @@ export default function Chat() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="font-semibold text-gray-900 dark:text-white truncate">
+                    <h2 className="font-semibold text-white truncate">
                       <span className="md:hidden">{selectedUser.full_name.split(' ')[0]}</span>
                       <span className="hidden md:inline">{selectedUser.full_name}</span>
                     </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-400">
                       {isUserOnline(selectedUser.last_seen) ? (
                         <span className="text-green-500 flex items-center">
                           <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>
@@ -1365,29 +1365,29 @@ export default function Chat() {
                   {messages.length > 0 && (
                     <button
                       onClick={toggleMultiSelect}
-                      className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+                      className={`p-2 hover:bg-gray-700 rounded-lg transition-colors ${
                         multiSelectMode ? 'bg-green-100 dark:bg-green-900/30' : ''
                       }`}
                       title="Select multiple messages"
                     >
                       <CheckSquare className={`w-4 h-4 md:w-5 md:h-5 ${
-                        multiSelectMode ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+                        multiSelectMode ? 'text-green-600 dark:text-green-400' : 'text-gray-400'
                       }`} />
                     </button>
                   )}
                   <button
                     onClick={loadMessages}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                     title="Refresh messages"
                   >
-                    <RefreshCw className="w-4 h-4 md:w-5 md:h-5 text-gray-500 dark:text-gray-400" />
+                    <RefreshCw className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                   </button>
                   <button
                     onClick={handleCloseChat}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                     title="Close chat"
                   >
-                    <X className="w-4 h-4 md:w-5 md:h-5 text-gray-500 dark:text-gray-400" />
+                    <X className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                   </button>
                 </div>
               </div>
@@ -1412,10 +1412,10 @@ export default function Chat() {
                       <MoreVertical className="w-5 h-5 text-green-700 dark:text-green-400" />
                     </button>
                     {showMultiSelectMenu && (
-                      <div className="absolute top-full mt-2 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[140px] z-10">
+                      <div className="absolute top-full mt-2 right-0 bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-1 min-w-[140px] z-10">
                         <button
                           onClick={() => setShowMultiSelectDeleteSubmenu(!showMultiSelectDeleteSubmenu)}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center space-x-2"
                         >
                           <Trash2 className="w-4 h-4" />
                           <span>Delete</span>
@@ -1423,17 +1423,17 @@ export default function Chat() {
                       </div>
                     )}
                     {showMultiSelectDeleteSubmenu && showMultiSelectMenu && (
-                      <div className="absolute top-full mt-2 right-[152px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] z-10">
+                      <div className="absolute top-full mt-2 right-[152px] bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] z-10">
                         <button
                           onClick={() => deleteSelectedMessages(true)}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
                         >
                           <Trash2 className="w-4 h-4" />
                           <span>Delete for everyone</span>
                         </button>
                         <button
                           onClick={() => deleteSelectedMessages(false)}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center space-x-2"
                         >
                           <Trash2 className="w-4 h-4" />
                           <span>Delete for me</span>
@@ -1494,7 +1494,7 @@ export default function Chat() {
                         className={`inline-block max-w-[85%] sm:max-w-[75%] md:max-w-[65%] rounded-md px-2.5 py-1.5 ${
                           isSent
                             ? 'bg-gradient-to-r from-green-700 to-emerald-700 text-white'
-                            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
+                            : 'bg-gray-800 text-white border border-gray-700'
                         }`}
                       >
                         {message.image_url ? (
@@ -1512,7 +1512,7 @@ export default function Chat() {
                             )}
                             <span
                               className={`block text-[10px] whitespace-nowrap text-right ${
-                                isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
+                                isSent ? 'text-green-100' : 'text-gray-400'
                               }`}
                             >
                               {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
@@ -1523,7 +1523,7 @@ export default function Chat() {
                             {decryptedMessages.get(message.id) || 'Decrypting...'}{' '}
                             <span
                               className={`text-[10px] whitespace-nowrap ${
-                                isSent ? 'text-green-100' : 'text-gray-500 dark:text-gray-400'
+                                isSent ? 'text-green-100' : 'text-gray-400'
                               }`}
                             >
                               {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
@@ -1541,7 +1541,7 @@ export default function Chat() {
                             className={`p-1 rounded-lg transition-opacity ${
                               isSent 
                                 ? 'hover:bg-white/20 text-white' 
-                                : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400'
                             }`}
                             title="Message options"
                           >
@@ -1551,12 +1551,12 @@ export default function Chat() {
                             <div 
                               className={`absolute ${isTopHalf ? 'top-full mt-2' : 'bottom-full mb-2'} ${
                                 isSent ? 'right-0' : 'left-0'
-                              } bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px] z-20`}
+                              } bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px] z-20`}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
                                 onClick={() => setShowDeleteSubmenu(!showDeleteSubmenu)}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center space-x-2"
                               >
                                 <Trash2 className="w-4 h-4" />
                                 <span>Delete</span>
@@ -1567,19 +1567,19 @@ export default function Chat() {
                             <div 
                               className={`fixed md:absolute ${isTopHalf ? 'md:top-full md:mt-2' : 'md:bottom-full md:mb-2'} ${
                                 isSent ? 'left-4 right-4 md:left-auto md:right-0 md:right-[152px]' : 'left-4 right-4 md:right-auto md:left-0 md:left-[152px]'
-                              } bottom-20 md:bottom-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 md:w-[200px] md:min-w-[180px] z-30`}
+                              } bottom-20 md:bottom-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 md:w-[200px] md:min-w-[180px] z-30`}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
                                 onClick={() => deleteMessageForEveryone(message.id)}
-                                className="w-full px-4 py-3 md:py-2 text-left text-sm md:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 text-red-600 dark:text-red-400 flex items-center space-x-2"
+                                className="w-full px-4 py-3 md:py-2 text-left text-sm md:text-sm hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 text-red-600 dark:text-red-400 flex items-center space-x-2"
                               >
                                 <Trash2 className="w-4 h-4" />
                                 <span>Delete for everyone</span>
                               </button>
                               <button
                                 onClick={() => deleteMessageForMe(message.id)}
-                                className="w-full px-4 py-3 md:py-2 text-left text-sm md:text-sm hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                                className="w-full px-4 py-3 md:py-2 text-left text-sm md:text-sm hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600 text-gray-300 flex items-center space-x-2"
                               >
                                 <Trash2 className="w-4 h-4" />
                                 <span>Delete for me</span>
@@ -1596,17 +1596,17 @@ export default function Chat() {
             </div>
 
             {/* Message Input */}
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
+            <div className="bg-gray-800 border-t border-gray-700 p-3 md:p-4 flex-shrink-0">
               <form onSubmit={sendMessage} className="flex items-center space-x-1 md:space-x-2 relative">
                 <div className="flex items-center flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="px-2 md:px-3 py-2 md:py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors active:bg-gray-100 dark:active:bg-gray-700 rounded-lg"
+                    className="px-2 md:px-3 py-2 md:py-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors active:bg-gray-100 dark:active:bg-gray-700 rounded-lg"
                   >
                     <Smile className="w-5 h-5 md:w-6 md:h-6" />
                   </button>
-                  <label className="px-2 md:px-3 py-2 md:py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer active:bg-gray-100 dark:active:bg-gray-700 rounded-lg">
+                  <label className="px-2 md:px-3 py-2 md:py-3 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer active:bg-gray-100 dark:active:bg-gray-700 rounded-lg">
                     <input
                       type="file"
                       accept="image/*"
@@ -1617,7 +1617,7 @@ export default function Chat() {
                     <Upload className={`w-5 h-5 md:w-6 md:h-6 ${uploadingImage ? 'opacity-50' : ''}`} />
                   </label>
                   {showEmojiPicker && (
-                    <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 max-w-[280px] sm:max-w-none sm:w-80 max-h-48 sm:max-h-64 overflow-y-auto scrollbar-hide z-50">
+                    <div className="absolute bottom-full left-0 mb-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3 max-w-[280px] sm:max-w-none sm:w-80 max-h-48 sm:max-h-64 overflow-y-auto scrollbar-hide z-50">
                       <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 sm:gap-2">
                         {emojis.map((emoji, index) => (
                           <button
@@ -1627,7 +1627,7 @@ export default function Chat() {
                               setNewMessage(newMessage + emoji)
                               setShowEmojiPicker(false)
                             }}
-                            className="text-2xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 transition-colors"
+                            className="text-2xl hover:bg-gray-700 rounded p-1 transition-colors"
                           >
                             {emoji}
                           </button>
@@ -1642,7 +1642,7 @@ export default function Chat() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 min-w-0 px-3 md:px-4 py-2 md:py-3 text-base bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
+                  className="flex-1 min-w-0 px-3 md:px-4 py-2 md:py-3 text-base bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400"
                   style={{ fontSize: '16px' }}
                 />
                 <button
@@ -1669,10 +1669,10 @@ export default function Chat() {
               <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 md:p-6 rounded-full inline-block mb-4">
                 <MessageSquare className="w-12 h-12 md:w-16 md:h-16 text-white" />
               </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
                 Welcome to Universe Chat
               </h2>
-              <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">
+              <p className="text-sm md:text-base text-gray-400">
                 Select a user to start chatting
               </p>
             </div>
@@ -1684,21 +1684,21 @@ export default function Chat() {
     {/* Settings Modal */}
     {showSettings && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowSettings(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] md:max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+        <div className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] md:max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-700">
+            <h2 className="text-xl md:text-2xl font-bold text-white">Settings</h2>
             <button
               onClick={() => setShowSettings(false)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition active:bg-gray-200 dark:active:bg-gray-600"
+              className="p-2 hover:bg-gray-700 rounded-lg transition active:bg-gray-200 dark:active:bg-gray-600"
             >
-              <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-4">
             {/* Profile Picture Section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Profile Picture
               </label>
               <div className="flex items-center space-x-4">
@@ -1738,7 +1738,7 @@ export default function Chat() {
                     <Upload className="w-4 h-4 mr-2" />
                     {uploadingAvatar ? 'Uploading...' : 'Upload Picture'}
                   </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     Max 5MB. (JPG, PNG)
                   </p>
                 </div>
@@ -1746,7 +1746,7 @@ export default function Chat() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Full Name
               </label>
               <input
@@ -1754,16 +1754,16 @@ export default function Chat() {
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
                 placeholder="Enter your full name"
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              <label className="block text-sm font-medium text-gray-300 mb-3">
                 Disappearing Message Timer
               </label>
               <div className="space-y-2">
-                <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                <label className="flex items-center p-3 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-700 transition">
                   <input
                     type="radio"
                     name="deleteTimer"
@@ -1772,9 +1772,9 @@ export default function Chat() {
                     onChange={(e) => setDeleteTimer(e.target.value as 'off')}
                     className="w-4 h-4 text-green-600 focus:ring-green-500"
                   />
-                  <span className="ml-3 text-sm text-gray-900 dark:text-white">Off - Keep all messages</span>
+                  <span className="ml-3 text-sm text-white">Off - Keep all messages</span>
                 </label>
-                <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                <label className="flex items-center p-3 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-700 transition">
                   <input
                     type="radio"
                     name="deleteTimer"
@@ -1783,9 +1783,9 @@ export default function Chat() {
                     onChange={(e) => setDeleteTimer(e.target.value as 'immediately')}
                     className="w-4 h-4 text-green-600 focus:ring-green-500"
                   />
-                  <span className="ml-3 text-sm text-gray-900 dark:text-white">Immediately - Delete when closing chat</span>
+                  <span className="ml-3 text-sm text-white">Immediately - Delete when closing chat</span>
                 </label>
-                <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                <label className="flex items-center p-3 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-700 transition">
                   <input
                     type="radio"
                     name="deleteTimer"
@@ -1794,9 +1794,9 @@ export default function Chat() {
                     onChange={(e) => setDeleteTimer(e.target.value as '24h')}
                     className="w-4 h-4 text-green-600 focus:ring-green-500"
                   />
-                  <span className="ml-3 text-sm text-gray-900 dark:text-white">24 hours - Delete messages after 1 day</span>
+                  <span className="ml-3 text-sm text-white">24 hours - Delete messages after 1 day</span>
                 </label>
-                <label className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                <label className="flex items-center p-3 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-700 transition">
                   <input
                     type="radio"
                     name="deleteTimer"
@@ -1805,21 +1805,21 @@ export default function Chat() {
                     onChange={(e) => setDeleteTimer(e.target.value as '7d')}
                     className="w-4 h-4 text-green-600 focus:ring-green-500"
                   />
-                  <span className="ml-3 text-sm text-gray-900 dark:text-white">7 days - Delete messages after 1 week</span>
+                  <span className="ml-3 text-sm text-white">7 days - Delete messages after 1 week</span>
                 </label>
               </div>
             </div>
 
             {/* Message Font Size Section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Message Font Size
               </label>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Small</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{fontSize}px</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Large</span>
+                  <span className="text-sm text-gray-400">Small</span>
+                  <span className="text-sm font-medium text-white">{fontSize}px</span>
+                  <span className="text-sm text-gray-400">Large</span>
                 </div>
                 <input
                   type="range"
@@ -1830,8 +1830,8 @@ export default function Chat() {
                   onChange={(e) => setFontSize(Number(e.target.value))}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-green-600"
                 />
-                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                  <p style={{ fontSize: `${fontSize}px` }} className="text-gray-900 dark:text-white">
+                <div className="p-3 bg-gray-900 rounded-lg">
+                  <p style={{ fontSize: `${fontSize}px` }} className="text-white">
                     Preview: This is how your messages will look
                   </p>
                 </div>
@@ -1839,9 +1839,9 @@ export default function Chat() {
             </div>
 
             {/* Delete Account Section */}
-            <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="pt-6 border-t border-gray-700">
               <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <p className="text-sm text-gray-400 mb-3">
                 Once you delete your account, there is no going back. All your messages and data will be permanently removed.
               </p>
               <button
@@ -1857,11 +1857,11 @@ export default function Chat() {
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-t border-gray-700">
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSettings(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                className="flex-1 px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition"
               >
                 Cancel
               </button>
@@ -1880,22 +1880,22 @@ export default function Chat() {
     {/* Delete Account Confirmation Modal */}
     {showDeleteModal && currentUser && (
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]" onClick={() => setShowDeleteModal(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border-2 border-red-500" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border-2 border-red-500" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Delete Account</h2>
             <button
               onClick={() => setShowDeleteModal(false)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+              className="p-2 hover:bg-gray-700 rounded-lg transition"
             >
-              <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>
 
           <div className="mb-6">
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-300 mb-4">
               This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
             </p>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <p className="text-sm font-medium text-gray-300 mb-2">
               Please type <span className="font-bold text-red-600 dark:text-red-400">{currentUser.username}</span> to confirm:
             </p>
             <input
@@ -1903,7 +1903,7 @@ export default function Chat() {
               value={deleteConfirmUsername}
               onChange={(e) => setDeleteConfirmUsername(e.target.value)}
               placeholder="Enter your username"
-              className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:text-white"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-white placeholder-gray-400"
             />
             {deleteError && (
               <p className="mt-2 text-sm text-red-600 dark:text-red-400">
@@ -1915,7 +1915,7 @@ export default function Chat() {
           <div className="flex gap-3">
             <button
               onClick={() => setShowDeleteModal(false)}
-              className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              className="flex-1 px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition"
             >
               Cancel
             </button>
@@ -1932,8 +1932,8 @@ export default function Chat() {
     )}
     
     {/* Footer */}
-    <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-2 px-4">
-      <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+    <footer className="bg-gray-800 border-t border-gray-700 py-2 px-4">
+      <p className="text-xs text-center text-gray-400">
         Developed by Adeepa Wedage
       </p>
     </footer>
@@ -1951,8 +1951,8 @@ export default function Chat() {
           >
             <X className="w-6 h-6" />
           </button>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 md:p-6 shadow-2xl">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center truncate">
+          <div className="bg-gray-800 rounded-2xl p-4 md:p-6 shadow-2xl">
+            <h3 className="text-base md:text-lg font-semibold text-white mb-4 text-center truncate">
               {viewingAvatar.name}
             </h3>
             <div className="w-64 h-64 sm:w-80 sm:h-80 mx-auto rounded-full overflow-hidden border-4 border-green-500 dark:border-green-400">
