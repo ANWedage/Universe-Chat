@@ -34,10 +34,26 @@ type Profile = {
   last_seen: string | null
 }
 
+type Group = {
+  id: string
+  name: string
+  created_by: string
+  created_at: string
+}
+
+type GroupMember = {
+  id: string
+  group_id: string
+  user_id: string
+  joined_at: string
+  profiles?: Profile
+}
+
 type Message = {
   id: string
   sender_id: string
-  receiver_id: string
+  receiver_id: string | null
+  group_id: string | null
   content: string
   created_at: string
   read: boolean
@@ -70,8 +86,17 @@ export default function Chat() {
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set())
   const [showMultiSelectMenu, setShowMultiSelectMenu] = useState(false)
   const [showMultiSelectDeleteSubmenu, setShowMultiSelectDeleteSubmenu] = useState(false)
-  const [activeTab, setActiveTab] = useState<'all' | 'myChats'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'myChats' | 'groups'>('all')
   const [myChatsUsers, setMyChatsUsers] = useState<Profile[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([])
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [selectedUsersForGroup, setSelectedUsersForGroup] = useState<Set<string>>(new Set())
+  const [groupSearchQuery, setGroupSearchQuery] = useState('')
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false)
+  const [showGroupMembers, setShowGroupMembers] = useState(false)
   const [contextMenuUser, setContextMenuUser] = useState<string | null>(null)
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -146,6 +171,7 @@ export default function Chat() {
       loadUsers()
       loadUserSettings()
       loadUnreadConversations()
+      loadGroups()
       
       // Run cleanup on mount
       cleanupOldMessages()
@@ -266,6 +292,7 @@ export default function Chat() {
 
   useEffect(() => {
     if (selectedUser && currentUser) {
+      setSelectedGroup(null) // Clear group selection
       loadMessages()
       
       // Subscribe to new messages with a unique channel name
@@ -322,6 +349,41 @@ export default function Chat() {
   }, [selectedUser, currentUser])
 
   useEffect(() => {
+    if (selectedGroup && currentUser) {
+      setSelectedUser(null) // Clear user selection
+      loadGroupMessages()
+      loadGroupMembers(selectedGroup.id)
+      
+      // Subscribe to group messages
+      const channelName = `group:${selectedGroup.id}`
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `group_id=eq.${selectedGroup.id}`
+          },
+          (payload) => {
+            const newMessage = payload.new as Message
+            setMessages((current) => {
+              const exists = current.some(msg => msg.id === newMessage.id)
+              if (exists) return current
+              return [...current, newMessage]
+            })
+          }
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
+    }
+  }, [selectedGroup, currentUser])
+
+  useEffect(() => {
     const baseUsers = activeTab === 'all' ? users : myChatsUsers
     const filtered = baseUsers.filter((user) =>
       user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -332,16 +394,21 @@ export default function Chat() {
 
   // Decrypt messages when they change
   useEffect(() => {
-    if (!currentUser || !selectedUser) return
+    if (!currentUser || (!selectedUser && !selectedGroup)) return
 
     const decryptAllMessages = async () => {
       const newDecrypted = new Map<string, string>()
       
       for (const message of messages) {
+        // For group messages, use group_id as the recipient
+        // For direct messages, use receiver_id
+        const recipientId = message.group_id || message.receiver_id
+        if (!recipientId) continue
+        
         const decrypted = await decryptMessage(
           message.content,
           message.sender_id,
-          message.receiver_id
+          recipientId
         )
         newDecrypted.set(message.id, decrypted)
       }
@@ -350,7 +417,7 @@ export default function Chat() {
     }
 
     decryptAllMessages()
-  }, [messages, currentUser, selectedUser])
+  }, [messages, currentUser, selectedUser, selectedGroup])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -502,6 +569,171 @@ export default function Chat() {
     }
   }
 
+  const loadGroups = async () => {
+    if (!currentUser) return
+
+    try {
+      // Get groups where current user is a member
+      const { data: memberData } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', currentUser.id)
+
+      if (!memberData || memberData.length === 0) {
+        setGroups([])
+        return
+      }
+
+      const groupIds = memberData.map(m => m.group_id)
+
+      // Get group details
+      const { data: groupsData } = await supabase
+        .from('groups')
+        .select('*')
+        .in('id', groupIds)
+        .order('created_at', { ascending: false })
+
+      setGroups(groupsData || [])
+    } catch (error) {
+      console.error('Error loading groups:', error)
+    }
+  }
+
+  const loadGroupMembers = async (groupId: string) => {
+    try {
+      const { data } = await supabase
+        .from('group_members')
+        .select('*, profiles(*)')
+        .eq('group_id', groupId)
+
+      setGroupMembers(data || [])
+    } catch (error) {
+      console.error('Error loading group members:', error)
+    }
+  }
+
+  const createGroup = async () => {
+    if (!currentUser || !newGroupName.trim() || selectedUsersForGroup.size === 0) {
+      alert('Please enter a group name and select at least one member')
+      return
+    }
+
+    try {
+      console.log('Creating group:', newGroupName.trim())
+      console.log('Current user:', currentUser.id)
+      console.log('Selected members:', Array.from(selectedUsersForGroup))
+      
+      // Create the group
+      const { data: groupData, error: groupError } = await supabase
+        .from('groups')
+        .insert({
+          name: newGroupName.trim(),
+          created_by: currentUser.id
+        })
+        .select()
+        .single()
+
+      console.log('Group creation response:', { groupData, groupError })
+
+      if (groupError) {
+        console.error('Group creation error:', groupError)
+        throw new Error(`Failed to create group: ${groupError.message}`)
+      }
+
+      // Add members (including creator)
+      const membersToAdd = [currentUser.id, ...Array.from(selectedUsersForGroup)]
+      console.log('Adding members:', membersToAdd)
+      
+      const { error: membersError } = await supabase
+        .from('group_members')
+        .insert(
+          membersToAdd.map(userId => ({
+            group_id: groupData.id,
+            user_id: userId
+          }))
+        )
+
+      console.log('Members add response:', membersError)
+
+      if (membersError) {
+        console.error('Members add error:', membersError)
+        throw new Error(`Failed to add members: ${membersError.message}`)
+      }
+
+      // Reset and refresh
+      setNewGroupName('')
+      setSelectedUsersForGroup(new Set())
+      setGroupSearchQuery('')
+      setShowCreateGroupModal(false)
+      await loadGroups()
+      setActiveTab('groups')
+    } catch (error) {
+      console.error('Error creating group:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      alert(`Failed to create group: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const addGroupMember = async (userId: string) => {
+    if (!selectedGroup || !currentUser) return
+
+    // Check if user is group creator
+    if (selectedGroup.created_by !== currentUser.id) {
+      alert('Only the group creator can add members')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .insert({
+          group_id: selectedGroup.id,
+          user_id: userId
+        })
+
+      if (error) throw error
+
+      await loadGroupMembers(selectedGroup.id)
+      setShowAddMemberModal(false)
+      setGroupSearchQuery('')
+    } catch (error) {
+      console.error('Error adding member:', error)
+      alert('Failed to add member')
+    }
+  }
+
+  const removeGroupMember = async (userId: string) => {
+    if (!selectedGroup || !currentUser) return
+
+    // Check if user is group creator or removing themselves
+    if (selectedGroup.created_by !== currentUser.id && userId !== currentUser.id) {
+      alert('Only the group creator can remove members')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', selectedGroup.id)
+        .eq('user_id', userId)
+
+      if (error) throw error
+
+      // If user removed themselves, close the group chat
+      if (userId === currentUser.id) {
+        setSelectedGroup(null)
+        setGroupMembers([])
+        await loadGroups()
+      } else {
+        await loadGroupMembers(selectedGroup.id)
+      }
+    } catch (error) {
+      console.error('Error removing member:', error)
+      alert('Failed to remove member')
+    }
+  }
+
   const loadMessages = async () => {
     if (!selectedUser || !currentUser) return
 
@@ -510,6 +742,7 @@ export default function Chat() {
         .from('messages')
         .select('*')
         .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${selectedUser.id}),and(sender_id.eq.${selectedUser.id},receiver_id.eq.${currentUser.id})`)
+        .is('group_id', null)
         .order('created_at', { ascending: true })
 
       // Filter out messages deleted by current user
@@ -533,6 +766,22 @@ export default function Chat() {
       await loadUnreadConversations()
     } catch (error) {
       console.error('Error loading messages:', error)
+    }
+  }
+
+  const loadGroupMessages = async () => {
+    if (!selectedGroup || !currentUser) return
+
+    try {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('group_id', selectedGroup.id)
+        .order('created_at', { ascending: true })
+
+      setMessages(data || [])
+    } catch (error) {
+      console.error('Error loading group messages:', error)
     }
   }
 
@@ -601,7 +850,7 @@ export default function Chat() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || !selectedUser || !currentUser) return
+    if (!newMessage.trim() || (!selectedUser && !selectedGroup) || !currentUser) return
 
     const messageContent = newMessage.trim()
     setNewMessage('') // Clear input immediately for better UX
@@ -612,18 +861,20 @@ export default function Chat() {
     }
 
     try {
-      // Encrypt the message before sending
       console.log('Starting message send...')
       console.log('Current user:', currentUser.id)
-      console.log('Selected user:', selectedUser.id)
+      console.log('Selected user:', selectedUser?.id)
+      console.log('Selected group:', selectedGroup?.id)
       console.log('Message content:', messageContent)
       
       let encryptedContent
       try {
+        // For group messages, use group ID as encryption key
+        const recipientId = selectedGroup ? selectedGroup.id : selectedUser!.id
         encryptedContent = await encryptMessage(
           messageContent,
           currentUser.id,
-          selectedUser.id
+          recipientId
         )
         console.log('Message encrypted successfully')
       } catch (encryptError) {
@@ -632,11 +883,20 @@ export default function Chat() {
       }
 
       console.log('Attempting database insert...')
-      const { data, error } = await supabase.from('messages').insert({
+      const messageData: any = {
         sender_id: currentUser.id,
-        receiver_id: selectedUser.id,
-        content: encryptedContent, // Store encrypted content
-      }).select()
+        content: encryptedContent,
+      }
+
+      if (selectedGroup) {
+        messageData.group_id = selectedGroup.id
+        messageData.receiver_id = null
+      } else {
+        messageData.receiver_id = selectedUser!.id
+        messageData.group_id = null
+      }
+
+      const { data, error } = await supabase.from('messages').insert(messageData).select()
 
       console.log('Insert response:', { data, error })
 
@@ -1205,6 +1465,16 @@ export default function Chat() {
             >
               My Chats ({myChatsUsers.length})
             </button>
+            <button
+              onClick={() => setActiveTab('groups')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                activeTab === 'groups'
+                  ? 'text-green-400 border-b-2 border-green-400 bg-green-900/20'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              Groups ({groups.length})
+            </button>
           </div>
         </div>
 
@@ -1215,61 +1485,81 @@ export default function Chat() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={activeTab === 'groups' ? 'Search groups...' : 'Search users...'}
+                value={activeTab === 'groups' ? groupSearchQuery : searchQuery}
+                onChange={(e) => activeTab === 'groups' ? setGroupSearchQuery(e.target.value) : setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400"
               />
             </div>
-            <button
-              onClick={loadUsers}
-              className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-              title="Refresh user list"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
+            {activeTab === 'groups' ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={loadGroups}
+                  className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  title="Refresh groups"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                  title="Create new group"
+                >
+                  + Group
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={loadUsers}
+                className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                title="Refresh user list"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Users List */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {filteredUsers.length === 0 ? (
-            <div className="p-4 text-center text-gray-400">
-              No users found
-            </div>
-          ) : (
-            filteredUsers.map((user) => (
-              <div key={user.id} className="relative">
-                <button
-                  onClick={() => {
-                    setSelectedUser(user)
-                    setIsSidebarOpen(false)
-                  }}
-                  onContextMenu={(e) => handleRightClick(e, user.id)}
-                  className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-700 transition ${
-                    selectedUser?.id === user.id ? 'bg-green-900/30 border-l-4 border-green-600' : ''
-                  }`}
-                >
-                  <div 
-                    className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      user.avatar_url && setViewingAvatar({ url: user.avatar_url, name: user.full_name })
+        {activeTab !== 'groups' && (
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
+            {filteredUsers.length === 0 ? (
+              <div className="p-4 text-center text-gray-400">
+                No users found
+              </div>
+            ) : (
+              filteredUsers.map((user) => (
+                <div key={user.id} className="relative">
+                  <button
+                    onClick={() => {
+                      setSelectedUser(user)
+                      setIsSidebarOpen(false)
                     }}
+                    onContextMenu={(e) => handleRightClick(e, user.id)}
+                    className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-700 transition ${
+                      selectedUser?.id === user.id ? 'bg-green-900/30 border-l-4 border-green-600' : ''
+                    }`}
                   >
-                    {user.avatar_url ? (
-                      <Image
-                        src={user.avatar_url}
-                        alt={user.full_name}
-                        width={48}
-                        height={48}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <span className="text-white font-semibold text-lg">
-                        {user.full_name.charAt(0).toUpperCase()}
-                      </span>
+                    <div 
+                      className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        user.avatar_url && setViewingAvatar({ url: user.avatar_url, name: user.full_name })
+                      }}
+                    >
+                      {user.avatar_url ? (
+                        <Image
+                          src={user.avatar_url}
+                          alt={user.full_name}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <span className="text-white font-semibold text-lg">
+                          {user.full_name.charAt(0).toUpperCase()}
+                        </span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
@@ -1285,6 +1575,45 @@ export default function Chat() {
             ))
           )}
         </div>
+        )}
+
+        {/* Groups List */}
+        {activeTab === 'groups' && (
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
+            {groups.filter(g => g.name.toLowerCase().includes(groupSearchQuery.toLowerCase())).length === 0 ? (
+              <div className="p-4 text-center text-gray-400">
+                {groups.length === 0 ? 'No groups yet. Create one!' : 'No groups found'}
+              </div>
+            ) : (
+              groups.filter(g => g.name.toLowerCase().includes(groupSearchQuery.toLowerCase())).map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() => {
+                    setSelectedGroup(group)
+                    setIsSidebarOpen(false)
+                  }}
+                  className={`w-full p-4 flex items-center space-x-3 hover:bg-gray-700 transition ${
+                    selectedGroup?.id === group.id ? 'bg-green-900/30 border-l-4 border-green-600' : ''
+                  }`}
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-semibold text-lg">
+                      {group.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-semibold text-white truncate">
+                      {group.name}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {group.created_by === currentUser?.id ? 'Created by you' : 'Group chat'}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Context Menu for My Chats */}
         {contextMenuUser && activeTab === 'myChats' && (
@@ -1325,7 +1654,7 @@ export default function Chat() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col bg-gray-900 w-full md:w-auto min-h-0 h-full">
-        {selectedUser ? (
+        {selectedUser || selectedGroup ? (
           <div className="flex flex-col h-full">
             {/* Chat Header */}
             <div className="bg-gray-800 border-b border-gray-700 p-3 md:p-4 flex-shrink-0">
@@ -1338,53 +1667,83 @@ export default function Chat() {
                   <Menu className="w-6 h-6 text-gray-400" />
                 </button>
                 
-                <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
-                  <div 
-                    className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition"
-                    onClick={() => selectedUser.avatar_url && setViewingAvatar({ url: selectedUser.avatar_url, name: selectedUser.full_name })}
-                  >
-                    {selectedUser.avatar_url ? (
-                      <Image
-                        src={selectedUser.avatar_url}
-                        alt={selectedUser.full_name}
-                        width={40}
-                        height={40}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <span className="text-white font-semibold">
-                        {selectedUser.full_name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="font-semibold text-white truncate">
-                      <span className="md:hidden">{selectedUser.full_name.split(' ')[0]}</span>
-                      <span className="hidden md:inline">{selectedUser.full_name}</span>
-                    </h2>
-                    <p className="text-xs text-gray-400">
-                      {isUserOnline(selectedUser.last_seen) ? (
-                        <span className="text-green-500 flex items-center">
-                          <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>
-                          Online
-                        </span>
-                      ) : selectedUser.last_seen ? (
-                        `Last seen ${new Date(selectedUser.last_seen).toLocaleString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          hour: 'numeric', 
-                          minute: '2-digit', 
-                          hour12: true 
-                        })}`
+                {selectedUser && (
+                  <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
+                    <div 
+                      className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition"
+                      onClick={() => selectedUser.avatar_url && setViewingAvatar({ url: selectedUser.avatar_url, name: selectedUser.full_name })}
+                    >
+                      {selectedUser.avatar_url ? (
+                        <Image
+                          src={selectedUser.avatar_url}
+                          alt={selectedUser.full_name}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
                       ) : (
-                        '@' + selectedUser.username
+                        <span className="text-white font-semibold">
+                          {selectedUser.full_name.charAt(0).toUpperCase()}
+                        </span>
                       )}
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="font-semibold text-white truncate">
+                        <span className="md:hidden">{selectedUser.full_name.split(' ')[0]}</span>
+                        <span className="hidden md:inline">{selectedUser.full_name}</span>
+                      </h2>
+                      <p className="text-xs text-gray-400">
+                        {isUserOnline(selectedUser.last_seen) ? (
+                          <span className="text-green-500 flex items-center">
+                            <span className="w-2 h-2 bg-green-500 rounded-full mr-1.5"></span>
+                            Online
+                          </span>
+                        ) : selectedUser.last_seen ? (
+                          `Last seen ${new Date(selectedUser.last_seen).toLocaleString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: 'numeric', 
+                            minute: '2-digit', 
+                            hour12: true 
+                          })}`
+                        ) : (
+                          '@' + selectedUser.username
+                        )}
                     </p>
                   </div>
                 </div>
+                )}
+
+                {selectedGroup && (
+                  <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-semibold">
+                        {selectedGroup.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-semibold text-white truncate">
+                        {selectedGroup.name}
+                      </h2>
+                      <p className="text-xs text-gray-400 truncate">
+                        {groupMembers.length} member{groupMembers.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
-                  {messages.length > 0 && (
+                  {selectedGroup && (
+                    <button
+                      onClick={() => setShowGroupMembers(!showGroupMembers)}
+                      className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                      title="Group members"
+                    >
+                      <User className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                    </button>
+                  )}
+                  {selectedUser && messages.length > 0 && (
                     <button
                       onClick={toggleMultiSelect}
                       className={`p-2 hover:bg-gray-700 rounded-lg transition-colors ${
@@ -1398,14 +1757,18 @@ export default function Chat() {
                     </button>
                   )}
                   <button
-                    onClick={loadMessages}
+                    onClick={selectedUser ? loadMessages : loadGroupMessages}
                     className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                     title="Refresh messages"
                   >
                     <RefreshCw className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                   </button>
                   <button
-                    onClick={handleCloseChat}
+                    onClick={() => {
+                      setSelectedUser(null)
+                      setSelectedGroup(null)
+                      setShowGroupMembers(false)
+                    }}
                     className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                     title="Close chat"
                   >
@@ -1414,6 +1777,52 @@ export default function Chat() {
                 </div>
               </div>
             </div>
+
+            {/* Group Members Sidebar */}
+            {selectedGroup && showGroupMembers && (
+              <div className="bg-gray-800 border-b border-gray-700 p-4 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-white">Group Members</h3>
+                  {selectedGroup.created_by === currentUser?.id && (
+                    <button
+                      onClick={() => setShowAddMemberModal(true)}
+                      className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition"
+                    >
+                      + Add
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {groupMembers.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-300">
+                        {member.profiles?.full_name || 'Unknown'}
+                        {member.user_id === selectedGroup.created_by && (
+                          <span className="ml-2 text-xs text-green-400">(Creator)</span>
+                        )}
+                      </span>
+                      {selectedGroup.created_by === currentUser?.id && member.user_id !== currentUser?.id && (
+                        <button
+                          onClick={() => removeGroupMember(member.user_id)}
+                          className="text-red-400 hover:text-red-300 transition"
+                          title="Remove member"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                      {member.user_id === currentUser?.id && member.user_id !== selectedGroup.created_by && (
+                        <button
+                          onClick={() => removeGroupMember(currentUser.id)}
+                          className="text-xs text-gray-400 hover:text-white transition"
+                        >
+                          Leave
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Multi-select Toolbar */}
             {multiSelectMode && selectedMessages.size > 0 && (
@@ -1475,6 +1884,11 @@ export default function Chat() {
                 const isTopHalf = index < messages.length / 2
                 const isSelected = selectedMessages.has(message.id)
                 
+                // Get sender name for group messages
+                const senderName = selectedGroup && !isSent 
+                  ? groupMembers.find(m => m.user_id === message.sender_id)?.profiles?.full_name || 'Unknown'
+                  : null
+                
                 let touchTimer: NodeJS.Timeout | null = null
                 
                 const handleTouchStart = () => {
@@ -1519,6 +1933,11 @@ export default function Chat() {
                             : 'bg-gray-800 text-white border border-gray-700'
                         }`}
                       >
+                        {senderName && (
+                          <div className="text-xs text-green-300 mb-0.5 font-semibold">
+                            {senderName}
+                          </div>
+                        )}
                         {message.image_url ? (
                           <div className="space-y-1">
                             <img 
@@ -1959,6 +2378,166 @@ export default function Chat() {
         Developed by Adeepa Wedage
       </p>
     </footer>
+
+    {/* Create Group Modal */}
+    {showCreateGroupModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full max-h-[80vh] flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Create Group</h3>
+            <button
+              onClick={() => {
+                setShowCreateGroupModal(false)
+                setNewGroupName('')
+                setSelectedUsersForGroup(new Set())
+                setGroupSearchQuery('')
+              }}
+              className="p-1 hover:bg-gray-700 rounded transition"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
+
+          <input
+            type="text"
+            placeholder="Group name"
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400 mb-4"
+          />
+
+          <div className="mb-3">
+            <input
+              type="text"
+              placeholder="Search users to add..."
+              value={groupSearchQuery}
+              onChange={(e) => setGroupSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto mb-4 space-y-2">
+            {users.filter(u => 
+              u.full_name.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
+              u.username.toLowerCase().includes(groupSearchQuery.toLowerCase())
+            ).map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
+                onClick={() => {
+                  const newSet = new Set(selectedUsersForGroup)
+                  if (newSet.has(user.id)) {
+                    newSet.delete(user.id)
+                  } else {
+                    newSet.add(user.id)
+                  }
+                  setSelectedUsersForGroup(newSet)
+                }}
+              >
+                <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                  selectedUsersForGroup.has(user.id) 
+                    ? 'bg-green-600 border-green-600' 
+                    : 'border-gray-500'
+                }`}>
+                  {selectedUsersForGroup.has(user.id) && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-semibold">
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate">{user.full_name}</p>
+                  <p className="text-xs text-gray-400 truncate">@{user.username}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setShowCreateGroupModal(false)
+                setNewGroupName('')
+                setSelectedUsersForGroup(new Set())
+                setGroupSearchQuery('')
+              }}
+              className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={createGroup}
+              disabled={!newGroupName.trim() || selectedUsersForGroup.size === 0}
+              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Create ({selectedUsersForGroup.size} selected)
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Add Member Modal */}
+    {showAddMemberModal && selectedGroup && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full max-h-[80vh] flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Add Members</h3>
+            <button
+              onClick={() => {
+                setShowAddMemberModal(false)
+                setGroupSearchQuery('')
+              }}
+              className="p-1 hover:bg-gray-700 rounded transition"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
+
+          <div className="mb-3">
+            <input
+              type="text"
+              placeholder="Search users to add..."
+              value={groupSearchQuery}
+              onChange={(e) => setGroupSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-white placeholder-gray-400"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {users.filter(u => 
+              !groupMembers.some(m => m.user_id === u.id) &&
+              (u.full_name.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
+              u.username.toLowerCase().includes(groupSearchQuery.toLowerCase()))
+            ).map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center space-x-3 p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
+                onClick={() => addGroupMember(user.id)}
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-semibold">
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate">{user.full_name}</p>
+                  <p className="text-xs text-gray-400 truncate">@{user.username}</p>
+                </div>
+                <button className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition">
+                  Add
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Avatar Viewer Modal */}
     {viewingAvatar && (
