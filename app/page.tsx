@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MessageSquare, Users, Zap, Shield } from "lucide-react";
+import { MessageSquare, Users, Zap, Shield, Download } from "lucide-react";
 
 export default function Home() {
   return (
@@ -37,6 +37,14 @@ export default function Home() {
             >
               Sign In
             </Link>
+            <a
+              href="/universe-chat.apk"
+              download
+              className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold text-lg hover:from-emerald-700 hover:to-teal-700 transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
+            >
+              <Download className="w-5 h-5" />
+              Download APK
+            </a>
           </div>
         </div>
 
