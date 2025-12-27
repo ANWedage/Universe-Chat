@@ -1336,9 +1336,10 @@ export default function Chat() {
                       </span>
                     )}
                   </div>
-                  <div>
-                    <h2 className="font-semibold text-gray-900 dark:text-white">
-                      {selectedUser.full_name}
+                  <div className="min-w-0">
+                    <h2 className="font-semibold text-gray-900 dark:text-white truncate">
+                      <span className="md:hidden">{selectedUser.full_name.split(' ')[0]}</span>
+                      <span className="hidden md:inline">{selectedUser.full_name}</span>
                     </h2>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {isUserOnline(selectedUser.last_seen) ? (
