@@ -1597,8 +1597,8 @@ export default function Chat() {
 
             {/* Message Input */}
             <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 md:p-4 flex-shrink-0">
-              <form onSubmit={sendMessage} className="flex space-x-1 md:space-x-2 relative">
-                <div className="flex items-center">
+              <form onSubmit={sendMessage} className="flex items-center space-x-1 md:space-x-2 relative">
+                <div className="flex items-center flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -1642,13 +1642,13 @@ export default function Chat() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 px-3 md:px-4 py-2 md:py-3 text-base bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
+                  className="flex-1 min-w-0 px-3 md:px-4 py-2 md:py-3 text-base bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
                   style={{ fontSize: '16px' }}
                 />
                 <button
                   type="submit"
                   disabled={!newMessage.trim()}
-                  className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 md:hover:scale-105"
+                  className="flex-shrink-0 px-3 md:px-6 py-2 md:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 md:hover:scale-105"
                 >
                   <Send className="w-5 h-5" />
                 </button>
