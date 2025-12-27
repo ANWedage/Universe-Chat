@@ -1119,7 +1119,7 @@ export default function Chat() {
                     setSelectedUser(user)
                     setIsSidebarOpen(false)
                   }}
-                  className="w-full p-4 flex items-center space-x-3 hover:bg-gray-700 transition relative bg-green-50/50 dark:bg-green-900/10"
+                  className="w-full p-4 flex items-center space-x-3 hover:bg-gray-700 transition relative bg-green-900/10"
                 >
                   <div 
                     className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full flex items-center justify-center flex-shrink-0 relative overflow-hidden cursor-pointer hover:opacity-80 transition"
