@@ -39,6 +39,8 @@ type Group = {
   name: string
   created_by: string
   created_at: string
+  photo_url?: string | null
+  delete_timer?: '24h' | '3d' | 'off'
 }
 
 type GroupMember = {
@@ -97,6 +99,9 @@ export default function Chat() {
   const [groupSearchQuery, setGroupSearchQuery] = useState('')
   const [showAddMemberModal, setShowAddMemberModal] = useState(false)
   const [showGroupMembers, setShowGroupMembers] = useState(false)
+  const [showGroupSettings, setShowGroupSettings] = useState(false)
+  const [groupDeleteTimer, setGroupDeleteTimer] = useState<'24h' | '3d' | 'off'>('off')
+  const [uploadingGroupPhoto, setUploadingGroupPhoto] = useState(false)
   const [contextMenuUser, setContextMenuUser] = useState<string | null>(null)
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 })
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -1596,10 +1601,21 @@ export default function Chat() {
                     selectedGroup?.id === group.id ? 'bg-green-900/30 border-l-4 border-green-600' : ''
                   }`}
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-semibold text-lg">
-                      {group.name.charAt(0).toUpperCase()}
-                    </span>
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {group.photo_url ? (
+                      <Image
+                        src={group.photo_url}
+                        alt={group.name}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-white font-semibold text-lg">
+                        {group.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm font-semibold text-white truncate">
@@ -1717,10 +1733,21 @@ export default function Chat() {
 
                 {selectedGroup && (
                   <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-semibold">
-                        {selectedGroup.name.charAt(0).toUpperCase()}
-                      </span>
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {selectedGroup.photo_url ? (
+                        <Image
+                          src={selectedGroup.photo_url}
+                          alt={selectedGroup.name}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <span className="text-white font-semibold">
+                          {selectedGroup.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h2 className="font-semibold text-white truncate">
@@ -1735,13 +1762,22 @@ export default function Chat() {
 
                 <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
                   {selectedGroup && (
-                    <button
-                      onClick={() => setShowGroupMembers(!showGroupMembers)}
-                      className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                      title="Group members"
-                    >
-                      <User className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setShowGroupSettings(true)}
+                        className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                        title="Group settings"
+                      >
+                        <Settings className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                      </button>
+                      <button
+                        onClick={() => setShowGroupMembers(!showGroupMembers)}
+                        className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                        title="Group members"
+                      >
+                        <User className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                      </button>
+                    </>
                   )}
                   {selectedUser && messages.length > 0 && (
                     <button
@@ -2378,6 +2414,177 @@ export default function Chat() {
         Developed by Adeepa Wedage
       </p>
     </footer>
+
+    {/* Group Settings Modal */}
+    {showGroupSettings && selectedGroup && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowGroupSettings(false)}>
+        <div className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-6 border-b border-gray-700">
+            <h2 className="text-xl font-bold text-white">Group Settings</h2>
+            <button
+              onClick={() => setShowGroupSettings(false)}
+              className="p-2 hover:bg-gray-700 rounded-lg transition"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-6">
+            {/* Group Photo Section */}
+            {selectedGroup.created_by === currentUser?.id && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Group Photo
+                </label>
+                <div className="flex items-center space-x-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center overflow-hidden">
+                    {selectedGroup.photo_url ? (
+                      <Image
+                        src={selectedGroup.photo_url}
+                        alt={selectedGroup.name}
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-white font-semibold text-2xl">
+                        {selectedGroup.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        
+                        if (!file.type.startsWith('image/')) {
+                          alert('Please select an image file')
+                          return
+                        }
+
+                        setUploadingGroupPhoto(true)
+                        try {
+                          const fileExt = file.name.split('.').pop()
+                          const fileName = `${selectedGroup.id}-${Math.random()}.${fileExt}`
+                          const filePath = `group-photos/${fileName}`
+
+                          const { error: uploadError } = await supabase.storage
+                            .from('avatars')
+                            .upload(filePath, file, { upsert: true })
+
+                          if (uploadError) throw uploadError
+
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('avatars')
+                            .getPublicUrl(filePath)
+
+                          await supabase
+                            .from('groups')
+                            .update({ photo_url: publicUrl })
+                            .eq('id', selectedGroup.id)
+
+                          setSelectedGroup({ ...selectedGroup, photo_url: publicUrl })
+                          await loadGroups()
+                        } catch (error) {
+                          console.error('Error uploading group photo:', error)
+                          alert('Failed to upload group photo')
+                        } finally {
+                          setUploadingGroupPhoto(false)
+                        }
+                      }}
+                      className="hidden"
+                      id="group-photo-upload"
+                      disabled={uploadingGroupPhoto}
+                    />
+                    <label
+                      htmlFor="group-photo-upload"
+                      className={`cursor-pointer px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition inline-block text-sm ${
+                        uploadingGroupPhoto ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {uploadingGroupPhoto ? 'Uploading...' : selectedGroup.photo_url ? 'Change Photo' : 'Upload Photo'}
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Disappearing Messages Timer */}
+            {selectedGroup.created_by === currentUser?.id && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Disappearing Messages
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { value: 'off', label: 'Off' },
+                    { value: '24h', label: '24 Hours' },
+                    { value: '3d', label: '3 Days' }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={async () => {
+                        try {
+                          await supabase
+                            .from('groups')
+                            .update({ delete_timer: option.value })
+                            .eq('id', selectedGroup.id)
+                          
+                          setGroupDeleteTimer(option.value as '24h' | '3d' | 'off')
+                          setSelectedGroup({ ...selectedGroup, delete_timer: option.value as '24h' | '3d' | 'off' })
+                        } catch (error) {
+                          console.error('Error updating timer:', error)
+                          alert('Failed to update timer')
+                        }
+                      }}
+                      className={`w-full px-4 py-3 rounded-lg border-2 transition-all text-left ${
+                        (selectedGroup.delete_timer || 'off') === option.value
+                          ? 'border-green-500 bg-green-900/30 text-white'
+                          : 'border-gray-600 hover:border-gray-500 text-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{option.label}</span>
+                        {(selectedGroup.delete_timer || 'off') === option.value && (
+                          <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Messages will be automatically deleted after the selected time period
+                </p>
+              </div>
+            )}
+
+            {/* Group Info (Read-only for non-creators) */}
+            {selectedGroup.created_by !== currentUser?.id && (
+              <div className="text-center text-gray-400 py-8">
+                <p className="text-sm">Only the group creator can change settings</p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 border-t border-gray-700">
+            <button
+              onClick={() => setShowGroupSettings(false)}
+              className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Create Group Modal */}
     {showCreateGroupModal && (

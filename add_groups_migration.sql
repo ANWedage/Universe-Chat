@@ -3,7 +3,9 @@ CREATE TABLE IF NOT EXISTS groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   created_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  photo_url TEXT,
+  delete_timer TEXT DEFAULT 'off' CHECK (delete_timer IN ('off', '24h', '3d'))
 );
 
 -- Create group_members table
