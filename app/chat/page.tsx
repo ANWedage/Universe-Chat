@@ -238,6 +238,7 @@ export default function Chat() {
           (payload) => {
             console.log('New incoming message:', payload.new)
             loadUnreadConversations()
+            loadMyChatsUsers() // Update My Chats list
           }
         )
         .on(
@@ -252,6 +253,24 @@ export default function Chat() {
             console.log('Message updated:', payload.new)
             // Reload unread count when message read status changes
             loadUnreadConversations()
+          }
+        )
+        .subscribe()
+
+      // Subscribe to messages sent by current user to update My Chats
+      const outgoingChannel = supabase
+        .channel('outgoing-messages')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `sender_id=eq.${currentUser.id}`,
+          },
+          (payload) => {
+            console.log('New outgoing message:', payload.new)
+            loadMyChatsUsers() // Update My Chats list
           }
         )
         .subscribe()
@@ -290,6 +309,7 @@ export default function Chat() {
         clearInterval(cleanupInterval)
         supabase.removeChannel(profilesChannel)
         supabase.removeChannel(incomingChannel)
+        supabase.removeChannel(outgoingChannel)
         supabase.removeChannel(profileUpdatesChannel)
       }
     }
@@ -492,28 +512,33 @@ export default function Chat() {
     if (!currentUser) return
 
     try {
-      // Get all messages where current user is sender or receiver
+      // Get all direct messages (not group messages) where current user is sender or receiver
       const { data: recentMessages } = await supabase
         .from('messages')
         .select('sender_id, receiver_id')
         .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+        .is('group_id', null)  // Only get direct messages, not group messages
         .order('created_at', { ascending: false })
+
+      console.log('My Chats - recent messages:', recentMessages)
 
       if (!recentMessages || recentMessages.length === 0) {
         setMyChatsUsers([])
         return
       }
 
-      // Get unique user IDs from conversations
+      // Get unique user IDs from conversations (filter out null receiver_ids from group messages)
       const userIds = new Set<string>()
       recentMessages.forEach((msg) => {
-        if (msg.sender_id !== currentUser.id) {
+        if (msg.sender_id && msg.sender_id !== currentUser.id && msg.receiver_id) {
           userIds.add(msg.sender_id)
         }
-        if (msg.receiver_id !== currentUser.id) {
+        if (msg.receiver_id && msg.receiver_id !== currentUser.id && msg.receiver_id) {
           userIds.add(msg.receiver_id)
         }
       })
+
+      console.log('My Chats - unique user IDs:', Array.from(userIds))
 
       if (userIds.size === 0) {
         setMyChatsUsers([])
@@ -526,6 +551,7 @@ export default function Chat() {
         .select('*')
         .in('id', Array.from(userIds))
 
+      console.log('My Chats - loaded users:', chatUsers)
       setMyChatsUsers(chatUsers || [])
     } catch (error) {
       console.error('Error loading my chats users:', error)
@@ -918,6 +944,24 @@ export default function Chat() {
           return [...current, data[0] as Message]
         })
       }
+      
+      // Update My Chats list when sending a message
+      if (selectedUser) {
+        console.log('Updating My Chats after sending message to:', selectedUser.username)
+        setMyChatsUsers((current) => {
+          const exists = current.some(u => u.id === selectedUser.id)
+          if (exists) {
+            console.log('User already in My Chats')
+            return current
+          }
+          console.log('Adding user to My Chats')
+          return [...current, selectedUser]
+        })
+      }
+      
+      // Reload My Chats to ensure it's up to date
+      console.log('Reloading My Chats users...')
+      await loadMyChatsUsers()
       
       // Scroll to bottom after sending
       setTimeout(() => {
