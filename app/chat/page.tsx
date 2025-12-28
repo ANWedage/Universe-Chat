@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile, Menu, Reply, Check, CheckCheck } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
+import { storage } from '@/lib/storage'
 
 const emojis = [
   '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
@@ -148,7 +149,10 @@ export default function Chat() {
     // Add click handler to close context menu
     const handleClick = () => setContextMenuUser(null)
     document.addEventListener('click', handleClick)
-    return () => document.removeEventListener('click', handleClick)
+    
+    return () => {
+      document.removeEventListener('click', handleClick)
+    }
   }, [])
 
   // Update last_seen when user is logged in
@@ -1284,6 +1288,10 @@ export default function Chat() {
   const handleLogout = async () => {
     // Update last_seen before logging out
     await updateLastSeen()
+    
+    // Clear remember me preference on explicit logout
+    await storage.removeItem('rememberMe')
+    
     await supabase.auth.signOut()
     router.push('/login')
   }

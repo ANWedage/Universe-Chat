@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AlertCircle, Home } from 'lucide-react'
+import { storage } from '@/lib/storage'
 
 export default function Login() {
   const [username, setUsername] = useState('')
@@ -13,6 +14,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [isConfigured, setIsConfigured] = useState(true)
+  const [rememberMe, setRememberMe] = useState(true)
   const router = useRouter()
   const supabase = createClient()
 
@@ -23,6 +25,19 @@ export default function Login() {
     if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
       setIsConfigured(false)
     }
+
+    // Check if user is already logged in with remember me
+    const checkExistingSession = async () => {
+      const rememberMe = await storage.getItem('rememberMe')
+      if (rememberMe === 'true') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          // User has valid session and remember me is enabled
+          router.push('/chat')
+        }
+      }
+    }
+    checkExistingSession()
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -60,6 +75,13 @@ export default function Login() {
         setError('Invalid username or password')
         setLoading(false)
         return
+      }
+
+      // Store remember me preference
+      if (rememberMe) {
+        await storage.setItem('rememberMe', 'true')
+      } else {
+        await storage.setItem('rememberMe', 'false')
       }
 
       router.push('/chat')
@@ -149,6 +171,19 @@ export default function Login() {
               {error}
             </div>
           )}
+
+          <div className="flex items-center">
+            <input
+              id="rememberMe"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 cursor-pointer"
+            />
+            <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-300 cursor-pointer select-none">
+              Remember me (Stay logged in)
+            </label>
+          </div>
 
           <button
             type="submit"

@@ -4,17 +4,30 @@ import { Preferences } from '@capacitor/preferences'
 // Check if running in Capacitor (mobile app)
 const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor
 
-// Custom storage adapter for Capacitor
+// Custom storage adapter for Capacitor with proper error handling
 const capacitorStorage = {
   getItem: async (key: string) => {
-    const { value } = await Preferences.get({ key })
-    return value
+    try {
+      const { value } = await Preferences.get({ key })
+      return value
+    } catch (error) {
+      console.error('Error getting item from Capacitor storage:', error)
+      return null
+    }
   },
   setItem: async (key: string, value: string) => {
-    await Preferences.set({ key, value })
+    try {
+      await Preferences.set({ key, value })
+    } catch (error) {
+      console.error('Error setting item in Capacitor storage:', error)
+    }
   },
   removeItem: async (key: string) => {
-    await Preferences.remove({ key })
+    try {
+      await Preferences.remove({ key })
+    } catch (error) {
+      console.error('Error removing item from Capacitor storage:', error)
+    }
   },
 }
 
@@ -43,8 +56,9 @@ export function createClient() {
         storage: isCapacitor ? capacitorStorage : browserStorage,
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storageKey: 'supabase.auth.token'
+        detectSessionInUrl: false,
+        flowType: 'pkce',
+        storageKey: 'supabase-auth-token'
       }
     }
   )
