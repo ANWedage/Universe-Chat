@@ -8,6 +8,8 @@ import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Tras
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
 import { storage } from '@/lib/storage'
+import { requestNotificationPermission, showNotification, setupNotificationListeners, testNotification } from '@/lib/notifications'
+import { initPushNotifications, setupPushNotificationListeners } from '@/lib/push-notifications'
 
 const emojis = [
   '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
@@ -146,6 +148,35 @@ export default function Chat() {
   useEffect(() => {
     loadUser()
     
+    // Request notification permission with logging
+    const initNotifications = async () => {
+      console.log('Requesting notification permission...')
+      const granted = await requestNotificationPermission()
+      console.log('Notification permission granted:', granted)
+      
+      // Initialize push notifications for mobile
+      if (currentUser) {
+        console.log('Initializing push notifications...')
+        const token = await initPushNotifications(currentUser.id)
+        if (token) {
+          console.log('Push notifications initialized successfully')
+        }
+        setupPushNotificationListeners()
+      }
+    }
+    initNotifications()
+    
+    // Setup notification click listeners for mobile
+    setupNotificationListeners((userId) => {
+      // Handle notification click - navigate to that user's chat
+      if (userId) {
+        const user = users.find(u => u.id === userId)
+        if (user) {
+          setSelectedUser(user)
+        }
+      }
+    })
+    
     // Add click handler to close context menu
     const handleClick = () => setContextMenuUser(null)
     document.addEventListener('click', handleClick)
@@ -258,8 +289,53 @@ export default function Chat() {
             table: 'messages',
             filter: `receiver_id=eq.${currentUser.id}`,
           },
-          (payload) => {
+          async (payload) => {
             console.log('New incoming message:', payload.new)
+            const newMessage = payload.new as Message
+            
+            // Show notification only if app is in background
+            console.log('Message received. Document hidden:', document.hidden)
+            
+            if (document.hidden) {
+              try {
+                console.log('Getting sender info for notification...')
+                // Get sender info
+                const { data: sender } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', newMessage.sender_id)
+                  .single()
+                
+                if (sender) {
+                  console.log('Decrypting message for notification...')
+                  let messageContent = 'New message'
+                  try {
+                    // Decrypt message for notification
+                    const decrypted = await decryptMessage(
+                      newMessage.content,
+                      newMessage.sender_id,
+                      currentUser.id
+                    )
+                    messageContent = decrypted
+                  } catch (decryptError) {
+                    console.error('Failed to decrypt message for notification:', decryptError)
+                    messageContent = 'New message'
+                  }
+                  
+                  console.log('Showing notification:', sender.full_name, messageContent)
+                  await showNotification(
+                    sender.full_name,
+                    messageContent,
+                    newMessage.sender_id
+                  )
+                }
+              } catch (error) {
+                console.error('Error showing notification:', error)
+              }
+            } else {
+              console.log('Skipping notification - chat is active and visible')
+            }
+            
             loadUnreadConversations()
             loadMyChatsUsers() // Update My Chats list
           }
@@ -373,6 +449,34 @@ export default function Chat() {
                 
                 // Refresh unread conversations count
                 await loadUnreadConversations()
+                
+                // Show notification only if app is in background
+                if (document.hidden) {
+                  try {
+                    console.log('App is in background, showing notification...')
+                    let messageContent = 'New message'
+                    try {
+                      const decrypted = await decryptMessage(
+                        newMessage.content,
+                        newMessage.sender_id,
+                        selectedUser.id
+                      )
+                      messageContent = decrypted
+                    } catch (decryptError) {
+                      console.error('Failed to decrypt message for notification:', decryptError)
+                      messageContent = 'New message'
+                    }
+                    await showNotification(
+                      selectedUser.full_name,
+                      messageContent,
+                      selectedUser.id
+                    )
+                  } catch (error) {
+                    console.error('Error showing notification:', error)
+                  }
+                } else {
+                  console.log('Window is visible, skipping notification')
+                }
               }
               
               setMessages((current) => {
@@ -459,6 +563,43 @@ export default function Chat() {
           },
           async (payload) => {
             const newMessage = payload.new as Message
+            
+            // Show notification only if message is from someone else and app is in background
+            if (newMessage.sender_id !== currentUser.id && document.hidden) {
+              try {
+                console.log('App is in background, showing group notification...')
+                // Get sender info
+                const { data: sender } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', newMessage.sender_id)
+                  .single()
+                
+                if (sender && newMessage.group_id) {
+                  let messageContent = 'New message'
+                  try {
+                    const decrypted = await decryptMessage(
+                      newMessage.content,
+                      newMessage.sender_id,
+                      newMessage.group_id
+                    )
+                    messageContent = decrypted
+                  } catch (decryptError) {
+                    console.error('Failed to decrypt message for notification:', decryptError)
+                    messageContent = 'New message'
+                  }
+                  
+                  await showNotification(
+                    `${sender.full_name} in ${selectedGroup.name}`,
+                    messageContent,
+                    newMessage.sender_id
+                  )
+                }
+              } catch (error) {
+                console.error('Error showing group notification:', error)
+              }
+            }
+            
             setMessages((current) => {
               const exists = current.some(msg => msg.id === newMessage.id)
               if (exists) return current
@@ -1757,9 +1898,17 @@ export default function Chat() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-semibold text-white truncate">
-                      {user.full_name}
-                    </p>
+                    <div className="flex items-center space-x-10">
+                      <p className="text-sm font-semibold text-white truncate">
+                        {user.full_name}
+                      </p>
+                      {isUserOnline(user.last_seen) && (
+                        <span className="flex items-center text-[13px] text-green-500 flex-shrink-0">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>
+                          Online
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 truncate">
                       @{user.username}
                     </p>
@@ -2597,6 +2746,28 @@ export default function Chat() {
                   <span className="ml-3 text-sm text-white">7 days - Delete messages after 1 week</span>
                 </label>
               </div>
+            </div>
+
+            {/* Notification Test Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Test Notifications
+              </label>
+              <button
+                onClick={async () => {
+                  const { testNotification } = await import('@/lib/notifications')
+                  testNotification()
+                }}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center justify-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span>Send Test Notification</span>
+              </button>
+              <p className="text-xs text-gray-400 mt-2">
+                Click to test if notifications are working on your device
+              </p>
             </div>
 
             {/* Message Font Size Section */}
