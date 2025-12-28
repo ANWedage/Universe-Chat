@@ -358,6 +358,25 @@ export default function Chat() {
                 if (exists) return current
                 return [...current, newMessage]
               })
+              
+              // Decrypt the message immediately to avoid "Decrypting..." delay
+              try {
+                const recipientId = newMessage.group_id || newMessage.receiver_id
+                if (recipientId) {
+                  const decrypted = await decryptMessage(
+                    newMessage.content,
+                    newMessage.sender_id,
+                    recipientId
+                  )
+                  setDecryptedMessages((current) => {
+                    const updated = new Map(current)
+                    updated.set(newMessage.id, decrypted)
+                    return updated
+                  })
+                }
+              } catch (decryptError) {
+                console.error('Error decrypting real-time message:', decryptError)
+              }
             }
           }
         )
@@ -391,13 +410,31 @@ export default function Chat() {
             table: 'messages',
             filter: `group_id=eq.${selectedGroup.id}`
           },
-          (payload) => {
+          async (payload) => {
             const newMessage = payload.new as Message
             setMessages((current) => {
               const exists = current.some(msg => msg.id === newMessage.id)
               if (exists) return current
               return [...current, newMessage]
             })
+            
+            // Decrypt group message immediately
+            try {
+              if (newMessage.group_id) {
+                const decrypted = await decryptMessage(
+                  newMessage.content,
+                  newMessage.sender_id,
+                  newMessage.group_id
+                )
+                setDecryptedMessages((current) => {
+                  const updated = new Map(current)
+                  updated.set(newMessage.id, decrypted)
+                  return updated
+                })
+              }
+            } catch (decryptError) {
+              console.error('Error decrypting group message:', decryptError)
+            }
           }
         )
         .subscribe()
@@ -938,10 +975,18 @@ export default function Chat() {
 
       // If realtime doesn't work, add message manually
       if (data && data.length > 0) {
+        const newMsg = data[0] as Message
         setMessages((current) => {
-          const exists = current.some(msg => msg.id === data[0].id)
+          const exists = current.some(msg => msg.id === newMsg.id)
           if (exists) return current
-          return [...current, data[0] as Message]
+          return [...current, newMsg]
+        })
+        
+        // Immediately add decrypted content to avoid "Decrypting..." message
+        setDecryptedMessages((current) => {
+          const updated = new Map(current)
+          updated.set(newMsg.id, messageContent) // Use the original plaintext
+          return updated
         })
       }
       
