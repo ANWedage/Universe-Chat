@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile, Menu, Reply } from 'lucide-react'
+import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile, Menu, Reply, Check, CheckCheck } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { encryptMessage, decryptMessage } from '@/lib/crypto'
 
@@ -59,6 +59,7 @@ type Message = {
   content: string
   created_at: string
   read: boolean
+  delivered: boolean
   deleted_by_sender: boolean
   deleted_by_receiver: boolean
   image_url: string | null
@@ -113,7 +114,9 @@ export default function Chat() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messageInputRef = useRef<HTMLInputElement>(null)
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -154,6 +157,20 @@ export default function Chat() {
 
     // Update last_seen immediately
     updateLastSeen()
+
+    // Mark undelivered messages as delivered when user comes online
+    const markAsDelivered = async () => {
+      try {
+        await supabase
+          .from('messages')
+          .update({ delivered: true })
+          .eq('receiver_id', currentUser.id)
+          .eq('delivered', false)
+      } catch (error) {
+        console.error('Error marking messages as delivered:', error)
+      }
+    }
+    markAsDelivered()
 
     // Update last_seen every 1 second for immediate status
     const lastSeenInterval = setInterval(() => {
@@ -382,6 +399,30 @@ export default function Chat() {
             }
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+          },
+          (payload) => {
+            const updatedMessage = payload.new as Message
+            // Update message status in local state (delivered/read status)
+            if (
+              (updatedMessage.sender_id === currentUser.id && updatedMessage.receiver_id === selectedUser.id) ||
+              (updatedMessage.sender_id === selectedUser.id && updatedMessage.receiver_id === currentUser.id)
+            ) {
+              setMessages((current) =>
+                current.map((msg) =>
+                  msg.id === updatedMessage.id
+                    ? { ...msg, delivered: updatedMessage.delivered, read: updatedMessage.read }
+                    : msg
+                )
+              )
+            }
+          }
+        )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             console.log('Real-time subscription active')
@@ -483,10 +524,37 @@ export default function Chat() {
     decryptAllMessages()
   }, [messages, currentUser, selectedUser, selectedGroup])
 
-  // Auto-scroll to bottom when messages change
+  // Smart auto-scroll: only scroll if user is near the bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    // Check if user is near the bottom (within 100px)
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
+    
+    // Only auto-scroll if user is near the bottom or hasn't manually scrolled
+    if (isNearBottom || !isUserScrolling) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    }
   }, [messages])
+
+  // Track manual scrolling
+  const handleScroll = () => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
+    
+    // If user scrolls away from bottom, mark as manually scrolling
+    if (!isNearBottom) {
+      setIsUserScrolling(true)
+    } else {
+      // If user scrolls back near bottom, allow auto-scroll again
+      setIsUserScrolling(false)
+    }
+  }
 
   const loadUser = async () => {
     try {
@@ -937,6 +1005,21 @@ export default function Chat() {
       console.log('Selected group:', selectedGroup?.id)
       console.log('Message content:', messageContent)
       
+      // Fetch latest receiver status to check if they're online (for direct messages)
+      let isReceiverOnline = false
+      if (selectedUser && !selectedGroup) {
+        const { data: latestUserData } = await supabase
+          .from('profiles')
+          .select('last_seen')
+          .eq('id', selectedUser.id)
+          .single()
+        
+        if (latestUserData) {
+          isReceiverOnline = isUserOnline(latestUserData.last_seen)
+          console.log('Receiver online status:', isReceiverOnline, 'Last seen:', latestUserData.last_seen)
+        }
+      }
+      
       let encryptedContent
       try {
         // For group messages, use group ID as encryption key
@@ -953,10 +1036,12 @@ export default function Chat() {
       }
 
       console.log('Attempting database insert...')
+      
       const messageData: any = {
         sender_id: currentUser.id,
         content: encryptedContent,
         reply_to: replyingTo?.id || null,
+        delivered: selectedGroup ? true : isReceiverOnline, // Group messages are always delivered, DM delivered if user online
       }
 
       if (selectedGroup) {
@@ -1014,7 +1099,8 @@ export default function Chat() {
       // Clear reply state
       setReplyingTo(null)
       
-      // Scroll to bottom after sending
+      // Always scroll to bottom when sending a message
+      setIsUserScrolling(false)
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
       }, 100)
@@ -2008,7 +2094,11 @@ export default function Chat() {
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide min-h-0">
+            <div 
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide min-h-0"
+            >
               {messages.map((message, index) => {
                 const isSent = message.sender_id === currentUser?.id
                 const isDeletable = canDeleteMessage(message)
@@ -2137,22 +2227,40 @@ export default function Chat() {
                               </span>
                             )}
                             <span
-                              className={`block text-[10px] whitespace-nowrap text-right ${
+                              className={`block text-[10px] whitespace-nowrap text-right flex items-center justify-end gap-1 ${
                                 isSent ? 'text-green-100' : 'text-gray-400'
                               }`}
                             >
-                              {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+                              <span>{new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}</span>
+                              {isSent && !message.group_id && (
+                                message.read ? (
+                                  <CheckCheck className="w-4 h-4" style={{ color: '#60a5fa', strokeWidth: 2.5 }} />
+                                ) : message.delivered ? (
+                                  <CheckCheck className="w-4 h-4" style={{ strokeWidth: 2.5 }} />
+                                ) : (
+                                  <Check className="w-4 h-4" style={{ strokeWidth: 2.5 }} />
+                                )
+                              )}
                             </span>
                           </div>
                         ) : (
                           <span className="break-words leading-tight" style={{ fontSize: `${fontSize}px` }}>
                             {decryptedMessages.get(message.id) || 'Decrypting...'}{' '}
                             <span
-                              className={`text-[10px] whitespace-nowrap ${
+                              className={`text-[10px] whitespace-nowrap inline-flex items-center gap-1 ${
                                 isSent ? 'text-green-100' : 'text-gray-400'
                               }`}
                             >
-                              {new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}
+                              <span>{new Date(message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}</span>
+                              {isSent && !message.group_id && (
+                                message.read ? (
+                                  <CheckCheck className="w-4 h-4" style={{ color: '#60a5fa', strokeWidth: 2.5 }} />
+                                ) : message.delivered ? (
+                                  <CheckCheck className="w-4 h-4" style={{ strokeWidth: 2.5 }} />
+                                ) : (
+                                  <Check className="w-4 h-4" style={{ strokeWidth: 2.5 }} />
+                                )
+                              )}
                             </span>
                           </span>
                         )}
