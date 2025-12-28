@@ -2028,7 +2028,7 @@ export default function Chat() {
                   touchStartX = e.touches[0].clientX
                   touchStartY = e.touches[0].clientY
                   
-                  if (!isDeletable || multiSelectMode) return
+                  if (multiSelectMode) return
                   touchTimer = setTimeout(() => {
                     setMessageMenuOpen(message.id)
                     setShowDeleteSubmenu(false)
@@ -2093,20 +2093,36 @@ export default function Chat() {
                             {senderName}
                           </div>
                         )}
-                        {message.reply_to && (
-                          <div className={`text-xs mb-1.5 p-1.5 rounded border-l-2 ${
-                            isSent 
-                              ? 'bg-green-800/30 border-green-400' 
-                              : 'bg-gray-700/50 border-gray-500'
-                          }`}>
-                            <div className="text-[10px] opacity-70 mb-0.5">
-                              {messages.find(m => m.id === message.reply_to)?.sender_id === currentUser?.id ? 'You' : 'Them'}
+                        {message.reply_to && (() => {
+                          const repliedMsg = messages.find(m => m.id === message.reply_to)
+                          const isOwnReply = repliedMsg?.sender_id === currentUser?.id
+                          let senderFirstName = 'Unknown'
+                          
+                          if (!isOwnReply && repliedMsg) {
+                            if (selectedGroup) {
+                              const member = groupMembers.find(m => m.user_id === repliedMsg.sender_id)
+                              const fullName = member?.profiles?.full_name || ''
+                              senderFirstName = fullName.split(' ')[0] || member?.profiles?.username || 'Unknown'
+                            } else if (selectedUser) {
+                              senderFirstName = selectedUser.full_name.split(' ')[0] || selectedUser.username
+                            }
+                          }
+                          
+                          return (
+                            <div className={`text-xs mb-1.5 p-1.5 rounded border-l-2 ${
+                              isSent 
+                                ? 'bg-green-800/30 border-green-400' 
+                                : 'bg-gray-700/50 border-gray-500'
+                            }`}>
+                              <div className="text-[10px] opacity-70 mb-0.5">
+                                {isOwnReply ? 'You' : senderFirstName}
+                              </div>
+                              <div className="opacity-80 truncate">
+                                {decryptedMessages.get(message.reply_to) || 'Message'}
+                              </div>
                             </div>
-                            <div className="opacity-80 truncate">
-                              {decryptedMessages.get(message.reply_to) || 'Message'}
-                            </div>
-                          </div>
-                        )}
+                          )
+                        })()}
                         {message.image_url ? (
                           <div className="space-y-1">
                             <img 
@@ -2141,7 +2157,7 @@ export default function Chat() {
                           </span>
                         )}
                       </div>
-                      {isDeletable && !multiSelectMode && (
+                      {!multiSelectMode && (
                         <div className="relative">
                           <button
                             onClick={() => {
@@ -2175,13 +2191,15 @@ export default function Chat() {
                                 <Reply className="w-4 h-4" />
                                 <span>Reply</span>
                               </button>
-                              <button
-                                onClick={() => setShowDeleteSubmenu(!showDeleteSubmenu)}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center space-x-2"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                <span>Delete</span>
-                              </button>
+                              {isDeletable && (
+                                <button
+                                  onClick={() => setShowDeleteSubmenu(!showDeleteSubmenu)}
+                                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center space-x-2"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  <span>Delete</span>
+                                </button>
+                              )}
                             </div>
                           )}
                           {showDeleteSubmenu && messageMenuOpen === message.id && (
@@ -2218,12 +2236,26 @@ export default function Chat() {
 
             {/* Message Input */}
             <div className="bg-gray-800 border-t border-gray-700 p-3 md:p-4 flex-shrink-0">
-              {replyingTo && (
-                <div className="mb-2 flex items-start bg-gray-700/50 rounded-lg p-2 border-l-4 border-green-500">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-green-400 font-semibold mb-0.5">
-                      Replying to {replyingTo.sender_id === currentUser?.id ? 'yourself' : selectedGroup ? groupMembers.find(m => m.user_id === replyingTo.sender_id)?.profiles?.full_name || 'Unknown' : selectedUser?.full_name}
-                    </div>
+              {replyingTo && (() => {
+                const isOwnMessage = replyingTo.sender_id === currentUser?.id
+                let senderName = 'Unknown'
+                
+                if (!isOwnMessage) {
+                  if (selectedGroup) {
+                    const member = groupMembers.find(m => m.user_id === replyingTo.sender_id)
+                    const fullName = member?.profiles?.full_name || ''
+                    senderName = fullName.split(' ')[0] || member?.profiles?.username || 'Unknown'
+                  } else if (selectedUser) {
+                    senderName = selectedUser.full_name.split(' ')[0] || selectedUser.username
+                  }
+                }
+                
+                return (
+                  <div className="mb-2 flex items-start bg-gray-700/50 rounded-lg p-2 border-l-4 border-green-500">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-green-400 font-semibold mb-0.5">
+                        Replying to {isOwnMessage ? 'yourself' : senderName}
+                      </div>
                     <div className="text-sm text-gray-300 truncate">
                       {decryptedMessages.get(replyingTo.id) || replyingTo.content}
                     </div>
@@ -2236,7 +2268,8 @@ export default function Chat() {
                     <X className="w-4 h-4 text-gray-400" />
                   </button>
                 </div>
-              )}
+                )
+              })()}
               <form onSubmit={sendMessage} className="flex items-center space-x-1 md:space-x-2 relative">
                 <div className="flex items-center flex-shrink-0">
                   <button
