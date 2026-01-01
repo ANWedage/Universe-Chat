@@ -59,6 +59,18 @@ export function createClient() {
         detectSessionInUrl: false,
         flowType: 'pkce',
         storageKey: 'supabase-auth-token'
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        },
+        timeout: 30000,
+        heartbeatIntervalMs: 15000
+      },
+      global: {
+        headers: {
+          'X-Client-Info': isCapacitor ? 'capacitor-mobile' : 'web'
+        }
       }
     }
   )

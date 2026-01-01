@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Search, Send, LogOut, User, MessageSquare, RefreshCw, X, Settings, Trash2, MoreVertical, CheckSquare, Square, Upload, Smile, Menu, Reply, Check, CheckCheck } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { encryptMessage, decryptMessage } from '@/lib/crypto'
 import { storage } from '@/lib/storage'
 import { requestNotificationPermission, showNotification, setupNotificationListeners, testNotification } from '@/lib/notifications'
 import { initPushNotifications, setupPushNotificationListeners } from '@/lib/push-notifications'
@@ -76,7 +75,6 @@ export default function Chat() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  const [decryptedMessages, setDecryptedMessages] = useState<Map<string, string>>(new Map())
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
@@ -293,6 +291,13 @@ export default function Chat() {
             console.log('New incoming message:', payload.new)
             const newMessage = payload.new as Message
             
+            // Add message to the messages list in real-time
+            setMessages((current) => {
+              const exists = current.some(msg => msg.id === newMessage.id)
+              if (exists) return current
+              return [...current, newMessage]
+            })
+            
             // Show notification only if app is in background
             console.log('Message received. Document hidden:', document.hidden)
             
@@ -307,25 +312,12 @@ export default function Chat() {
                   .single()
                 
                 if (sender) {
-                  console.log('Decrypting message for notification...')
-                  let messageContent = 'New message'
-                  try {
-                    // Decrypt message for notification
-                    const decrypted = await decryptMessage(
-                      newMessage.content,
-                      newMessage.sender_id,
-                      currentUser.id
-                    )
-                    messageContent = decrypted
-                  } catch (decryptError) {
-                    console.error('Failed to decrypt message for notification:', decryptError)
-                    messageContent = 'New message'
-                  }
+                  console.log('Showing notification for new message...')
                   
-                  console.log('Showing notification:', sender.full_name, messageContent)
+                  console.log('Showing notification:', sender.full_name, newMessage.content)
                   await showNotification(
                     sender.full_name,
-                    messageContent,
+                    newMessage.content,
                     newMessage.sender_id
                   )
                 }
@@ -420,125 +412,177 @@ export default function Chat() {
       loadMessages()
       
       // Subscribe to new messages with a unique channel name
-      const channelName = `chat:${currentUser.id}:${selectedUser.id}`
-      const channel = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-          },
-          async (payload) => {
-            const newMessage = payload.new as Message
-            // Only add message if it's part of this conversation
-            if (
-              (newMessage.sender_id === currentUser.id && newMessage.receiver_id === selectedUser.id) ||
-              (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === currentUser.id)
-            ) {
-              // Mark message as read if it's from the other user and we're viewing the chat
-              if (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === currentUser.id) {
-                await supabase
-                  .from('messages')
-                  .update({ read: true })
-                  .eq('id', newMessage.id)
-                
-                // Update the message in state with read: true
-                newMessage.read = true
-                
-                // Refresh unread conversations count
-                await loadUnreadConversations()
-                
-                // Show notification only if app is in background
-                if (document.hidden) {
-                  try {
-                    console.log('App is in background, showing notification...')
-                    let messageContent = 'New message'
+      const channelName = `chat:${currentUser.id}:${selectedUser.id}:${Date.now()}`
+      let channel: any = null
+      let reconnectTimer: NodeJS.Timeout | null = null
+      let healthCheckTimer: NodeJS.Timeout | null = null
+      let isSubscribed = false
+
+      const setupSubscription = () => {
+        console.log('Setting up message subscription for', selectedUser.full_name)
+        
+        // Remove old channel if exists
+        if (channel) {
+          try {
+            supabase.removeChannel(channel)
+          } catch (e) {
+            console.error('Error removing old channel:', e)
+          }
+        }
+
+        channel = supabase
+          .channel(channelName, {
+            config: {
+              broadcast: { self: false },
+              presence: { key: '' }
+            }
+          })
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+            },
+            async (payload) => {
+              const newMessage = payload.new as Message
+              console.log('Received new message:', newMessage.id)
+              
+              // Only add message if it's part of this conversation
+              if (
+                (newMessage.sender_id === currentUser.id && newMessage.receiver_id === selectedUser.id) ||
+                (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === currentUser.id)
+              ) {
+                // Mark message as read if it's from the other user and we're viewing the chat
+                if (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === currentUser.id) {
+                  await supabase
+                    .from('messages')
+                    .update({ read: true })
+                    .eq('id', newMessage.id)
+                  
+                  // Update the message in state with read: true
+                  newMessage.read = true
+                  
+                  // Refresh unread conversations count
+                  await loadUnreadConversations()
+                  
+                  // Show notification only if app is in background
+                  if (document.hidden) {
                     try {
-                      const decrypted = await decryptMessage(
+                      console.log('App is in background, showing notification...')
+                      await showNotification(
+                        selectedUser.full_name,
                         newMessage.content,
-                        newMessage.sender_id,
                         selectedUser.id
                       )
-                      messageContent = decrypted
-                    } catch (decryptError) {
-                      console.error('Failed to decrypt message for notification:', decryptError)
-                      messageContent = 'New message'
+                    } catch (error) {
+                      console.error('Error showing notification:', error)
                     }
-                    await showNotification(
-                      selectedUser.full_name,
-                      messageContent,
-                      selectedUser.id
-                    )
-                  } catch (error) {
-                    console.error('Error showing notification:', error)
+                  } else {
+                    console.log('Window is visible, skipping notification')
                   }
-                } else {
-                  console.log('Window is visible, skipping notification')
                 }
+                
+                setMessages((current) => {
+                  // Avoid duplicates
+                  const exists = current.some(msg => msg.id === newMessage.id)
+                  if (exists) return current
+                  return [...current, newMessage]
+                })
               }
-              
-              setMessages((current) => {
-                // Avoid duplicates
-                const exists = current.some(msg => msg.id === newMessage.id)
-                if (exists) return current
-                return [...current, newMessage]
-              })
-              
-              // Decrypt the message immediately to avoid "Decrypting..." delay
-              try {
-                const recipientId = newMessage.group_id || newMessage.receiver_id
-                if (recipientId) {
-                  const decrypted = await decryptMessage(
-                    newMessage.content,
-                    newMessage.sender_id,
-                    recipientId
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'messages',
+            },
+            (payload) => {
+              const updatedMessage = payload.new as Message
+              // Update message status in local state (delivered/read status)
+              if (
+                (updatedMessage.sender_id === currentUser.id && updatedMessage.receiver_id === selectedUser.id) ||
+                (updatedMessage.sender_id === selectedUser.id && updatedMessage.receiver_id === currentUser.id)
+              ) {
+                setMessages((current) =>
+                  current.map((msg) =>
+                    msg.id === updatedMessage.id
+                      ? { ...msg, delivered: updatedMessage.delivered, read: updatedMessage.read }
+                      : msg
                   )
-                  setDecryptedMessages((current) => {
-                    const updated = new Map(current)
-                    updated.set(newMessage.id, decrypted)
-                    return updated
-                  })
-                }
-              } catch (decryptError) {
-                console.error('Error decrypting real-time message:', decryptError)
+                )
               }
             }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'messages',
-          },
-          (payload) => {
-            const updatedMessage = payload.new as Message
-            // Update message status in local state (delivered/read status)
-            if (
-              (updatedMessage.sender_id === currentUser.id && updatedMessage.receiver_id === selectedUser.id) ||
-              (updatedMessage.sender_id === selectedUser.id && updatedMessage.receiver_id === currentUser.id)
-            ) {
-              setMessages((current) =>
-                current.map((msg) =>
-                  msg.id === updatedMessage.id
-                    ? { ...msg, delivered: updatedMessage.delivered, read: updatedMessage.read }
-                    : msg
-                )
-              )
+          )
+          .subscribe((status, err) => {
+            console.log('Subscription status:', status, err)
+            
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Real-time subscription active for', selectedUser.full_name)
+              isSubscribed = true
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error('❌ Channel error, will retry...', err)
+              isSubscribed = false
+              // Retry after 3 seconds
+              if (reconnectTimer) clearTimeout(reconnectTimer)
+              reconnectTimer = setTimeout(() => {
+                console.log('Retrying subscription...')
+                setupSubscription()
+              }, 3000)
+            } else if (status === 'TIMED_OUT') {
+              console.error('⏱️ Subscription timed out, reconnecting...', err)
+              isSubscribed = false
+              setupSubscription()
+            } else if (status === 'CLOSED') {
+              console.log('Channel closed')
+              isSubscribed = false
             }
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('Real-time subscription active')
-          }
-        })
+          })
+      }
+
+      // Initial subscription
+      setupSubscription()
+
+      // Health check every 30 seconds
+      healthCheckTimer = setInterval(() => {
+        if (!isSubscribed) {
+          console.log('Health check: subscription not active, reconnecting...')
+          setupSubscription()
+        }
+      }, 30000)
+
+      // Handle visibility change for mobile apps going to background/foreground
+      const handleVisibilityChange = () => {
+        if (!document.hidden && !isSubscribed) {
+          console.log('App became visible, reconnecting subscription...')
+          setupSubscription()
+        }
+      }
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+
+      // Handle online/offline events
+      const handleOnline = () => {
+        console.log('Network online, reconnecting subscription...')
+        setTimeout(() => setupSubscription(), 1000)
+      }
+      window.addEventListener('online', handleOnline)
 
       return () => {
-        supabase.removeChannel(channel)
+        console.log('Cleaning up message subscription')
+        isSubscribed = false
+        if (reconnectTimer) clearTimeout(reconnectTimer)
+        if (healthCheckTimer) clearInterval(healthCheckTimer)
+        if (channel) {
+          try {
+            supabase.removeChannel(channel)
+          } catch (e) {
+            console.error('Error removing channel on cleanup:', e)
+          }
+        }
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('online', handleOnline)
       }
     }
   }, [selectedUser, currentUser])
@@ -550,85 +594,138 @@ export default function Chat() {
       loadGroupMembers(selectedGroup.id)
       
       // Subscribe to group messages
-      const channelName = `group:${selectedGroup.id}`
-      const channel = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `group_id=eq.${selectedGroup.id}`
-          },
-          async (payload) => {
-            const newMessage = payload.new as Message
-            
-            // Show notification only if message is from someone else and app is in background
-            if (newMessage.sender_id !== currentUser.id && document.hidden) {
-              try {
-                console.log('App is in background, showing group notification...')
-                // Get sender info
-                const { data: sender } = await supabase
-                  .from('profiles')
-                  .select('full_name')
-                  .eq('id', newMessage.sender_id)
-                  .single()
-                
-                if (sender && newMessage.group_id) {
-                  let messageContent = 'New message'
-                  try {
-                    const decrypted = await decryptMessage(
-                      newMessage.content,
-                      newMessage.sender_id,
-                      newMessage.group_id
-                    )
-                    messageContent = decrypted
-                  } catch (decryptError) {
-                    console.error('Failed to decrypt message for notification:', decryptError)
-                    messageContent = 'New message'
-                  }
-                  
-                  await showNotification(
-                    `${sender.full_name} in ${selectedGroup.name}`,
-                    messageContent,
-                    newMessage.sender_id
-                  )
-                }
-              } catch (error) {
-                console.error('Error showing group notification:', error)
-              }
-            }
-            
-            setMessages((current) => {
-              const exists = current.some(msg => msg.id === newMessage.id)
-              if (exists) return current
-              return [...current, newMessage]
-            })
-            
-            // Decrypt group message immediately
-            try {
-              if (newMessage.group_id) {
-                const decrypted = await decryptMessage(
-                  newMessage.content,
-                  newMessage.sender_id,
-                  newMessage.group_id
-                )
-                setDecryptedMessages((current) => {
-                  const updated = new Map(current)
-                  updated.set(newMessage.id, decrypted)
-                  return updated
-                })
-              }
-            } catch (decryptError) {
-              console.error('Error decrypting group message:', decryptError)
-            }
+      const channelName = `group:${selectedGroup.id}:${Date.now()}`
+      let channel: any = null
+      let reconnectTimer: NodeJS.Timeout | null = null
+      let healthCheckTimer: NodeJS.Timeout | null = null
+      let isSubscribed = false
+
+      const setupSubscription = () => {
+        console.log('Setting up group subscription for', selectedGroup.name)
+        
+        if (channel) {
+          try {
+            supabase.removeChannel(channel)
+          } catch (e) {
+            console.error('Error removing old channel:', e)
           }
-        )
-        .subscribe()
+        }
+
+        channel = supabase
+          .channel(channelName, {
+            config: {
+              broadcast: { self: false },
+              presence: { key: '' }
+            }
+          })
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+              filter: `group_id=eq.${selectedGroup.id}`
+            },
+            async (payload) => {
+              const newMessage = payload.new as Message
+              console.log('Received new group message:', newMessage.id)
+              
+              // Show notification only if message is from someone else and app is in background
+              if (newMessage.sender_id !== currentUser.id && document.hidden) {
+                try {
+                  console.log('App is in background, showing group notification...')
+                  // Get sender info
+                  const { data: sender } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', newMessage.sender_id)
+                    .single()
+                  
+                  if (sender && newMessage.group_id) {
+                    await showNotification(
+                      `${sender.full_name} in ${selectedGroup.name}`,
+                      newMessage.content,
+                      newMessage.sender_id
+                    )
+                  }
+                } catch (error) {
+                  console.error('Error showing group notification:', error)
+                }
+              }
+              
+              setMessages((current) => {
+                const exists = current.some(msg => msg.id === newMessage.id)
+                if (exists) return current
+                return [...current, newMessage]
+              })
+            }
+          )
+          .subscribe((status, err) => {
+            console.log('Group subscription status:', status, err)
+            
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Group real-time subscription active for', selectedGroup.name)
+              isSubscribed = true
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error('❌ Group channel error, will retry...', err)
+              isSubscribed = false
+              if (reconnectTimer) clearTimeout(reconnectTimer)
+              reconnectTimer = setTimeout(() => {
+                console.log('Retrying group subscription...')
+                setupSubscription()
+              }, 3000)
+            } else if (status === 'TIMED_OUT') {
+              console.error('⏱️ Group subscription timed out, reconnecting...', err)
+              isSubscribed = false
+              setupSubscription()
+            } else if (status === 'CLOSED') {
+              console.log('Group channel closed')
+              isSubscribed = false
+            }
+          })
+      }
+
+      // Initial subscription
+      setupSubscription()
+
+      // Health check every 30 seconds
+      healthCheckTimer = setInterval(() => {
+        if (!isSubscribed) {
+          console.log('Health check: group subscription not active, reconnecting...')
+          setupSubscription()
+        }
+      }, 30000)
+
+      // Handle visibility change
+      const handleVisibilityChange = () => {
+        if (!document.hidden && !isSubscribed) {
+          console.log('App became visible, reconnecting group subscription...')
+          setupSubscription()
+        }
+      }
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+
+      // Handle online/offline events
+      const handleOnline = () => {
+        console.log('Network online, reconnecting group subscription...')
+        setTimeout(() => setupSubscription(), 1000)
+      }
+      window.addEventListener('online', handleOnline)
 
       return () => {
-        supabase.removeChannel(channel)
+        console.log('Cleaning up group subscription')
+        isSubscribed = false
+        if (reconnectTimer) clearTimeout(reconnectTimer)
+        if (healthCheckTimer) clearInterval(healthCheckTimer)
+        if (channel) {
+          try {
+            supabase.removeChannel(channel)
+          } catch (e) {
+            console.error('Error removing channel on cleanup:', e)
+          }
+        }
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('online', handleOnline)
       }
     }
   }, [selectedGroup, currentUser])
@@ -641,33 +738,6 @@ export default function Chat() {
     )
     setFilteredUsers(filtered)
   }, [searchQuery, users, myChatsUsers, activeTab])
-
-  // Decrypt messages when they change
-  useEffect(() => {
-    if (!currentUser || (!selectedUser && !selectedGroup)) return
-
-    const decryptAllMessages = async () => {
-      const newDecrypted = new Map<string, string>()
-      
-      for (const message of messages) {
-        // For group messages, use group_id as the recipient
-        // For direct messages, use receiver_id
-        const recipientId = message.group_id || message.receiver_id
-        if (!recipientId) continue
-        
-        const decrypted = await decryptMessage(
-          message.content,
-          message.sender_id,
-          recipientId
-        )
-        newDecrypted.set(message.id, decrypted)
-      }
-      
-      setDecryptedMessages(newDecrypted)
-    }
-
-    decryptAllMessages()
-  }, [messages, currentUser, selectedUser, selectedGroup])
 
   // Smart auto-scroll: only scroll if user is near the bottom
   useEffect(() => {
@@ -1164,27 +1234,12 @@ export default function Chat() {
           console.log('Receiver online status:', isReceiverOnline, 'Last seen:', latestUserData.last_seen)
         }
       }
-      
-      let encryptedContent
-      try {
-        // For group messages, use group ID as encryption key
-        const recipientId = selectedGroup ? selectedGroup.id : selectedUser!.id
-        encryptedContent = await encryptMessage(
-          messageContent,
-          currentUser.id,
-          recipientId
-        )
-        console.log('Message encrypted successfully')
-      } catch (encryptError) {
-        console.error('Encryption failed:', encryptError)
-        throw new Error('Failed to encrypt message: ' + (encryptError instanceof Error ? encryptError.message : 'Unknown error'))
-      }
 
       console.log('Attempting database insert...')
       
       const messageData: any = {
         sender_id: currentUser.id,
-        content: encryptedContent,
+        content: messageContent,
         reply_to: replyingTo?.id || null,
         delivered: selectedGroup ? true : isReceiverOnline, // Group messages are always delivered, DM delivered if user online
       }
@@ -1213,13 +1268,6 @@ export default function Chat() {
           const exists = current.some(msg => msg.id === newMsg.id)
           if (exists) return current
           return [...current, newMsg]
-        })
-        
-        // Immediately add decrypted content to avoid "Decrypting..." message
-        setDecryptedMessages((current) => {
-          const updated = new Map(current)
-          updated.set(newMsg.id, messageContent) // Use the original plaintext
-          return updated
         })
       }
       
@@ -2365,7 +2413,7 @@ export default function Chat() {
                                 {isOwnReply ? 'You' : senderFirstName}
                               </div>
                               <div className="opacity-80 truncate">
-                                {decryptedMessages.get(message.reply_to) || 'Message'}
+                                {messages.find(m => m.id === message.reply_to)?.content || 'Message'}
                               </div>
                             </div>
                           )
@@ -2380,7 +2428,7 @@ export default function Chat() {
                             />
                             {message.content && (
                               <span className="block break-words leading-tight" style={{ fontSize: `${fontSize}px` }}>
-                                {decryptedMessages.get(message.id) || 'Decrypting...'}
+                                {message.content}
                               </span>
                             )}
                             <span
@@ -2402,7 +2450,7 @@ export default function Chat() {
                           </div>
                         ) : (
                           <span className="break-words leading-tight" style={{ fontSize: `${fontSize}px` }}>
-                            {decryptedMessages.get(message.id) || 'Decrypting...'}{' '}
+                            {message.content}{' '}
                             <span
                               className={`text-[10px] whitespace-nowrap inline-flex items-center gap-1 ${
                                 isSent ? 'text-green-100' : 'text-gray-400'
@@ -2522,7 +2570,7 @@ export default function Chat() {
                         Replying to {isOwnMessage ? 'yourself' : senderName}
                       </div>
                     <div className="text-sm text-gray-300 truncate">
-                      {decryptedMessages.get(replyingTo.id) || replyingTo.content}
+                      {replyingTo.content}
                     </div>
                   </div>
                   <button
