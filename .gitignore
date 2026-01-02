@@ -41,16 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 # Capacitor
-# Exclude Android build artifacts but keep source code
-android/app/build/
-android/build/
-android/.gradle/
-android/local.properties
-android/.idea/
-android/*.iml
-android/captures/
-android/.externalNativeBuild/
-android/.cxx/
-
-# Exclude iOS
+android/
 ios/
