@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="250dp"
+    android:height="250dp"
+    android:viewportWidth="250"
+    android:viewportHeight="250">
+    
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#E8F5F1"
+        android:pathData="M125,125m-100,0a100,100 0,1 1,200 0a100,100 0,1 1,-200 0"/>
+    
+    <!-- Users Icon -->
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M100,100 C100,88.95 108.95,80 120,80 C131.05,80 140,88.95 140,100 C140,111.05 131.05,120 120,120 C108.95,120 100,111.05 100,100 Z"/>
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M80,140 C80,131.72 86.72,125 95,125 L145,125 C153.28,125 160,131.72 160,140 L160,170 L80,170 Z"/>
+    
+    <!-- Connection Lines -->
+    <path
+        android:strokeColor="#10B981"
+        android:strokeWidth="3"
+        android:pathData="M125,125 L160,90"
+        android:fillColor="@android:color/transparent"/>
+    <path
+        android:strokeColor="#10B981"
+        android:strokeWidth="3"
+        android:pathData="M125,125 L90,90"
+        android:fillColor="@android:color/transparent"/>
+</vector>

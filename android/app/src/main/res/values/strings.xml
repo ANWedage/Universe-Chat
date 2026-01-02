@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Universe Chat</string>
+    <string name="welcome_back">Welcome Back</string>
+    <string name="sign_in_subtitle">Sign in to continue chatting</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="remember_me">Remember me</string>
+    <string name="sign_in">Sign In</string>
+    <string name="dont_have_account">Don\'t have an account? Sign up</string>
+    
+    <string name="join_universe">Join Universe Chat</string>
+    <string name="create_account_subtitle">Create your account to start chatting</string>
+    <string name="full_name">Full Name</string>
+    <string name="email">Email</string>
+    <string name="retype_password">Retype Password</string>
+    <string name="create_account">Create Account</string>
+    <string name="already_have_account">Already have an account? Sign in</string>
+    
+    <string name="chats">Chats</string>
+    <string name="groups">Groups</string>
+    <string name="profile">Profile</string>
+    
+    <string name="search_users">Search Users</string>
+    <string name="search_hint">Search by name or username</string>
+    <string name="search">Search</string>
+    
+    <string name="type_message">Type a message...</string>
+    <string name="send">Send</string>
+    
+    <string name="logout">Logout</string>
+</resources>

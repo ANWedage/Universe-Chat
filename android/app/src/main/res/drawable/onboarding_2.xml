@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="250dp"
+    android:height="250dp"
+    android:viewportWidth="250"
+    android:viewportHeight="250">
+    
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#E8F5F1"
+        android:pathData="M125,125m-100,0a100,100 0,1 1,200 0a100,100 0,1 1,-200 0"/>
+    
+    <!-- Chat Bubbles -->
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M70,80 L130,80 A10,10 0 0,1 140,90 L140,110 A10,10 0 0,1 130,120 L90,120 L70,130 Z"/>
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M120,130 L180,130 A10,10 0 0,1 190,140 L190,160 A10,10 0 0,1 180,170 L140,170 L120,180 Z"/>
+    
+    <!-- Lightning Symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M110,95 L118,95 L112,105 L120,105 L108,120 L110,110 L105,110 Z"/>
+</vector>
